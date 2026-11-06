@@ -1,0 +1,15 @@
+{
+  "batch_id": "sample-customer-001",
+  "dataset": "demo",
+  "property_id": "bhl",
+  "kind": "customer",
+  "rows": [
+    {
+      "external_id": "SAMPLE-C001",
+      "code": "SAMPLE-C001",
+      "day": "2026-11-06",
+      "owner": "客服",
+      "status": "new"
+    }
+  ]
+}
