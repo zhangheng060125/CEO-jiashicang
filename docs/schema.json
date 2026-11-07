@@ -811,7 +811,10 @@
           "kitchen",
           "finance",
           "marketing",
-          "data"
+          "data",
+          "water",
+          "spa",
+          "goods"
         ]
       },
       "title": {
@@ -1186,7 +1189,10 @@
           "rooms",
           "dining",
           "cleaning",
-          "kitchen"
+          "kitchen",
+          "water",
+          "spa",
+          "goods"
         ]
       },
       "title": {
@@ -1326,6 +1332,130 @@
           "responded",
           "resolved"
         ]
+      }
+    }
+  },
+  "business_day": {
+    "label": "分业态营业与运营日报",
+    "fields": {
+      "day": {
+        "label": "营业日期",
+        "type": "date",
+        "required": true,
+        "options": null
+      },
+      "business": {
+        "label": "业务板块",
+        "type": "select",
+        "required": true,
+        "options": [
+          "dining",
+          "water",
+          "spa",
+          "goods"
+        ]
+      },
+      "is_open": {
+        "label": "当天实际营业",
+        "type": "bool",
+        "required": true,
+        "options": null
+      },
+      "complete": {
+        "label": "运营数量已核对（不代表成本完整）",
+        "type": "bool",
+        "required": true,
+        "options": null
+      },
+      "available_tables": {
+        "label": "实际开放餐桌数",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "meal_periods": {
+        "label": "实际营业餐次（如午晚餐为2）",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "served_tables": {
+        "label": "实际开台桌次（不是订单数）",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "waste_cost": {
+        "label": "食材损耗金额（已含耗用，不重复记费用）",
+        "type": "number",
+        "required": false,
+        "options": null
+      },
+      "visitors": {
+        "label": "实际入园 / 服务人次（含免费）",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "daily_capacity": {
+        "label": "核准当日接待上限（人次，非瞬时容量）",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "safety_incidents": {
+        "label": "已核对安全事件数（无事件填0）",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "appointments": {
+        "label": "归属当天的预约总数（同批预约）",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "completed_appointments": {
+        "label": "上述预约中实际完成数",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "available_minutes": {
+        "label": "全部开放工位可服务分钟数",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "used_minutes": {
+        "label": "上述工位实际占用分钟数",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "labor_hours": {
+        "label": "实际出勤总工时",
+        "type": "number",
+        "required": false,
+        "options": null
+      },
+      "source_ref": {
+        "label": "原系统 / 日结凭证编号",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "owner": {
+        "label": "核对负责人",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "note": {
+        "label": "营业、数量及口径说明",
+        "type": "text",
+        "required": false,
+        "options": null
       }
     }
   }

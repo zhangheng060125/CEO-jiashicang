@@ -3,6 +3,7 @@ Pure functions; no environment initialization, persistence or external integrati
 """
 from datetime import date, timedelta
 from hashlib import sha256
+import sectors
 
 RULES={'booking7':'未来7天预订不足','booking30':'未来30天预订不足','refund_ratio':'退款异常','budget':'费用超预算','negative_contribution':'成熟订单贡献为负','settlement':'结算逾期','data_quality':'数据缺失','service_redline':'服务红线'}
 
@@ -18,6 +19,7 @@ def schemas(f):
  }
 
 def validate(kind,d):
+ if kind=='business_day':sectors.validate(d)
  if kind=='alert_rule':
   if d['code'] in ['booking7','booking30','refund_ratio'] and (d['threshold'] is None or not 0<=d['threshold']<=1):raise ValueError('比例阈值必须在0至1之间')
   if d['code']=='service_redline' and (not d['enabled'] or d['severity']!='redline'):raise ValueError('服务红线不能禁用或降低级别')
@@ -53,7 +55,7 @@ def reversal_allocations(fs,ps):
    amount+=int(x['_external'] in extras)
    if not amount:continue
    remaining[x['_external']]-=amount
-   allocations.append({'payment_id':p.get('_id'),'payment_ref':p.get('_external'),'fulfillment_ref':x['_external'],'day':p['day'],'amount':amount/100,'business':x['business'],'room_type':x.get('room_type') or 'unknown','product_code':x.get('product_code') or '', 'property_id':x.get('_property'),'order_no':x['order_no']})
+   allocations.append({'payment_id':p.get('_id'),'payment_ref':p.get('_external'),'fulfillment_ref':x['_external'],'day':p['day'],'amount':amount/100,'business':x['business'],'room_type':x.get('room_type') or 'unknown','product_code':x.get('product_code') or '', 'guest_type':x.get('guest_type','not_applicable'),'property_id':x.get('_property'),'order_no':x['order_no']})
  return allocations
 
 def validate_relations(index):
@@ -170,11 +172,11 @@ def apply_rules(result,g,start,end,asof):
    dates={(date.fromisoformat(start)+timedelta(days=i)).isoformat() for i in range((date.fromisoformat(end)-date.fromisoformat(start)).days+1)}
    types={x['room_type'] for x in iv} or {'unknown'};present={(x['day'],x['room_type']) for x in iv};missing={d for d in dates if any((d,t) not in present for t in types)}
    if property_info['business']=='hotel' and missing:alerts.append(dict(title='逐日可售房量缺失',rule_code='data_quality',property_id=prop,channel='',order_no='',department='data',evidence=f'缺少{len(missing)}天房态，入住率与RevPAR不能确认'))
-   closed={x['day'] for x in iv if not any(y['is_open'] for y in iv if x['day']==y['day'])};covered={x['day'] for x in g['coverage'] if x['_property']==prop and x['complete']}
+   closed={x['day'] for x in iv if not any(y['is_open'] for y in iv if x['day']==y['day'])}|{d for p,d in sectors.closed_project_days(g) if p==prop};covered={x['day'] for x in g['coverage'] if x['_property']==prop and x['complete']}
    missing=dates-closed-covered
    unknown=sum(x['amount'] is None for x in g['cost'] if x['_property']==prop and start<=x['day']<=end)
    if missing or unknown:alerts.append(dict(title='成本数据或完整性确认缺失',rule_code='data_quality',property_id=prop,channel='',order_no='',department='finance',evidence=f'缺少{len(missing)}天确认，{unknown}条成本金额未知，不能认定净利润'))
-  for n in [7,30]:
+  for n in ([7,30] if property_info['business']=='hotel' else []):
    cfg=rule(prop,'booking'+str(n));days={(date.fromisoformat(asof)+timedelta(days=i)).isoformat() for i in range(n)}
    inv=[x for x in iv if x['day'] in days];den=sum(x['available'] for x in inv);booked=sum(x['rooms'] for x in reservations if x['day'] in days)
    if cfg['enabled'] and den and {x['day'] for x in inv}==days and booked/den<cfg['threshold']:

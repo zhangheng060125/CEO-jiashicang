@@ -14,13 +14,13 @@ ROOT=Path(__file__).resolve().parents[1]
 def worker(output):
  sys.path.insert(0,str(ROOT))
  import server as s
- import seed_demo,seed_extensions,seed_workspace_demo
- seed_demo.seed();seed_extensions.seed();seed_workspace_demo.seed()
+ import seed_demo,seed_extensions,seed_workspace_demo,seed_sectors_demo
+ seed_demo.seed();seed_extensions.seed();seed_workspace_demo.seed();seed_sectors_demo.seed()
  with s.db() as c:rows=s.records(c,'demo')
  assert rows and all(r['dataset']=='demo' for r in rows)
  end=max(r['data']['day'] for r in rows if r['kind']=='fulfillment')
  props=[r['property_id'] for r in rows if r['kind']=='property']
- manifest={'version':'1.5.0','asof':end,'end':end,'generated_at':s.NOW(),
+ manifest={'version':'1.6.0','asof':end,'end':end,'generated_at':s.NOW(),
            'start':(date.fromisoformat(end)-timedelta(days=29)).isoformat(),
            'periods':[7,30],'properties':props,'record_count':len(rows),
            'source':'全新隔离库生成的模拟快照；未包含实际经营数据','reports':{}}

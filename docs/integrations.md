@@ -95,3 +95,9 @@ python scripts/adapter_push.py https://已确定的实际域名 /映射完成的
 FIELD来源的整改记录只通过协同流程修改，普通issue编辑/删除不能绕过原件与复查。单据OCR建议不会自动写财务账、证明付款、鉴定发票真伪或确认全部成本完整。语音目前供回放，不自动转写为会计数据。
 
 GitHub Pages静态模式只返回全新隔离演示库中的样例，拒绝所有实际写入；原件和实际员工资料不放进公开demo目录。
+
+## v1.6 运营数量投递
+
+新增`business_day`，允许获授权的适配器投递餐饮/游乐/温泉SPA/零售运营日报，稳定业务键为项目、业务、日期。数据字段由`docs/schema.json`定义；运营数量不会自动产生财务记录。`complete`表示数量已核对，不代表全部成本完整。财务仍通过`coverage`确认成本，食材耗用通过明确`business=dining`、`category=food`的`cost`记录提供。
+
+精简模板`GET /api/template/business_day?business=dining`；导入预览带同一`business`参数。签名接口仍使用规范字段对象；相同业务编号内容变更拒绝静默覆盖。实际供应商适配、任务调度、回补和对账尚需配置，详见[自动采集任务清单](automation-roadmap.md)。

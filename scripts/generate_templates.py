@@ -17,3 +17,9 @@ wb.save(ROOT/'templates/all-templates.xlsx')
 (ROOT/'docs/import-schema.md').write_text('\n'.join(lines),encoding='utf8')
 (ROOT/'docs/schema.json').write_text(json.dumps(server.SCHEMAS,ensure_ascii=False,indent=2),encoding='utf8')
 print(f'Generated {len(server.SCHEMAS)} CSV templates, Excel workbook and schema documentation.')
+
+import sectors
+for business in sectors.FIELDS:
+ header=['external_id',*sectors.template_fields(business)]
+ with open(ROOT/'templates'/('business_day-'+business+'.csv'),'w',encoding='utf-8-sig',newline='') as out:csv.writer(out).writerow(header)
+print('Generated 4 compact sector collection templates.')

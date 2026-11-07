@@ -1,6 +1,7 @@
 """森活森动经营驾驶舱：SQLite persistence, scoped API and deterministic accounting."""
 import os, json, sqlite3, secrets, hashlib, hmac, csv, io, math, calendar
 import business
+import sectors
 import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -33,6 +34,9 @@ SCHEMAS={
  'target':dict(label='目标 / 预算 / 预测',fields={'start':f('开始日期','date'),'end':f('结束日期','date'),'channel':f('渠道（空为全渠道）','text',False),'scenario':f('口径','select',True,['budget','forecast']),'revenue':f('已履约收入目标','number',False),'cost':f('经营成本预算','number',False),'occupancy':f('入住率目标0至1','number',False),'owner':f('负责人')})
 }
 SCHEMAS.update(business.schemas(f))
+SCHEMAS['business_day']=sectors.schema(f)
+for kind in ['issue','sop_item']:
+ SCHEMAS[kind]['fields']['department']['options']+=['water','spa','goods']
 SCHEMAS['fulfillment']['fields'].update({'product_code':f('产品代码','text',False),'entitlement_code':f('核销权益代码','text',False),'redeemed_units':f('核销份数','number',False)})
 SCHEMAS['cost']['fields']['product_code']=f('分摊产品代码','text',False)
 SCHEMAS['payment']['fields']['fulfillment_ref']=f('定向冲回的履约外部编号（空为按剩余权益分摊）','text',False)
@@ -41,6 +45,8 @@ ROLES={'admin':set(SCHEMAS),'manager':{'inventory','order','reservation','fulfil
 ROLES['manager'].update({'alert_rule','product','entitlement','sop_item','sop_check','review'})
 ROLES['finance'].update({'alert_rule','entitlement'})
 ROLES['operations'].update({'touchpoint','review','product'})
+ROLES['manager'].add('business_day')
+ROLES['finance'].add('business_day')
 ROLES['executive']=set(ROLES['manager'])
 ROLES['staff']=set()
 FINANCIAL={'payment','cost','contract','operator_entry','coverage'}
@@ -85,6 +91,10 @@ def records(c,dataset,kind=None,props=None):
   if not props:return []
   q+=' AND property_id IN ('+','.join('?'*len(props))+')';args+=list(props)
  return [unpack(r) for r in c.execute(q+' ORDER BY id',args)]
+def filter_business(rows,kind,key):
+ if not key:return rows
+ if key not in ['room','dining','water','spa','goods','consignment_fee','membership','other'] or kind not in ['fulfillment','cost','product','business_day']:err('此类型不支持所选业态筛选')
+ return [r for r in rows if r['data'].get('business')==key]
 def err(msg,status=422):raise HTTPException(status,msg)
 def auth(request):
  token=request.cookies.get('hotel_session','')
@@ -182,13 +192,14 @@ def check_relations(c,dataset):
   if kind=='property':continue
   if not index.get((prop,'property')):err('酒店/项目不存在')
   orders={x['order_no']:x for x in index.get((prop,'order'),[])};contracts={x['code']:x for x in index.get((prop,'contract'),[])}
-  natural={'order':lambda x:x['order_no'],'contract':lambda x:x['code'],'campaign':lambda x:x['code'],'customer':lambda x:x['code'],'inventory':lambda x:(x['day'],x['room_type']),'coverage':lambda x:x['day'],'reservation':lambda x:(x['order_no'],x['day'],x['room_type'])}
+  natural={'order':lambda x:x['order_no'],'contract':lambda x:x['code'],'campaign':lambda x:x['code'],'customer':lambda x:x['code'],'inventory':lambda x:(x['day'],x['room_type']),'coverage':lambda x:x['day'],'reservation':lambda x:(x['order_no'],x['day'],x['room_type']),'business_day':lambda x:(x['day'],x['business'])}
   if kind in natural:
    keys=[natural[kind](x) for x in items]
    if len(keys)!=len(set(keys)):err(f'{SCHEMAS[kind]["label"]}的业务键重复')
   for x in items:
    if x.get('order_no') and kind!='order' and x['order_no'] not in orders:err('关联订单不存在：'+x['order_no'])
    if x.get('contract_code') and x['contract_code'] not in contracts:err('关联合同不存在')
+   if kind=='target' and x.get('occupancy') is not None and index[(prop,'property')][0]['business']!='hotel':err('入住率目标仅适用于住宿项目')
    if kind=='order':
     if x.get('campaign_code') and x['campaign_code'] not in {a['code'] for a in index.get((prop,'campaign'),[])}:err('营销活动不存在')
     if x.get('contract_code') and not contracts[x['contract_code']]['start']<=x['order_date']<=contracts[x['contract_code']]['end']:err('订单日期不在合同有效期内')
@@ -288,6 +299,10 @@ def javascript():return FileResponse(ROOT/'app.js',media_type='text/javascript')
 def preview_javascript():return FileResponse(ROOT/'preview.js',media_type='text/javascript')
 @app.get('/capture')
 def capture_page():return FileResponse(ROOT/'index.html')
+@app.get('/sectors.js')
+def sectors_javascript():return FileResponse(ROOT/'sectors.js',media_type='text/javascript')
+@app.get('/templates/data-sources.csv')
+def data_source_questionnaire():return FileResponse(ROOT/'templates/data-sources.csv',media_type='text/csv',filename='data-sources.csv')
 @app.get('/workspace.js')
 def workspace_javascript():return FileResponse(ROOT/'workspace.js',media_type='text/javascript')
 @app.get('/transport.js')
@@ -337,21 +352,23 @@ def me(request:Request):return auth(request)
 def schema(request:Request):
  u=auth(request);return {'schemas':{k:v for k,v in SCHEMAS.items() if (u['role']!='staff' or k=='property') and not(u['role']=='operations' and k in FINANCIAL)},'writable':list(ROLES[u['role']]),'today':TODAY()}
 @app.get('/api/records/{kind}')
-def listing(kind:str,request:Request,dataset:str='actual',property_id:str=''):
+def listing(kind:str,request:Request,dataset:str='actual',property_id:str='',business:str=''):
  u=auth(request);scope(u,dataset,property_id,kind)
  with db() as c:
-  rs=records(c,dataset,kind,allowed_props(c,u,dataset,property_id))
+  rs=filter_business(records(c,dataset,kind,allowed_props(c,u,dataset,property_id)),kind,business)
+ if u['role']=='operations' and kind=='business_day':
+  rs=[{**r,'data':{k:v for k,v in r['data'].items() if k!='waste_cost'}} for r in rs]
  return {'records':rs}
 
 @app.get('/api/export/{kind}')
-def export_records(kind:str,request:Request,dataset:str='actual',property_id:str='',start:str='',end:str=''):
+def export_records(kind:str,request:Request,dataset:str='actual',property_id:str='',start:str='',end:str='',business:str=''):
  u=auth(request);scope(u,dataset,property_id,kind)
  if kind not in SCHEMAS:err('未知记录类型')
- with db() as c:rs=records(c,dataset,kind,allowed_props(c,u,dataset,property_id))
+ with db() as c:rs=filter_business(records(c,dataset,kind,allowed_props(c,u,dataset,property_id)),kind,business)
  if start or end:
   day_range(start,end)
   rs=[r for r in rs if not(r['data'].get('day') or r['data'].get('order_date')) or start<=(r['data'].get('day') or r['data'].get('order_date'))<=end]
- out=io.StringIO();writer=csv.writer(out);keys=list(SCHEMAS[kind]['fields']);writer.writerow(['property_id','external_id',*keys,'version','updated_at'])
+ out=io.StringIO();writer=csv.writer(out);keys=[k for k in SCHEMAS[kind]['fields'] if not(u['role']=='operations' and kind=='business_day' and k=='waste_cost')];writer.writerow(['property_id','external_id',*keys,'version','updated_at'])
  def safe(v):
   if v is None:return ''
   if isinstance(v,bool):return 'true' if v else 'false'
@@ -406,17 +423,19 @@ def import_rows(c,u,kind,dataset,prop,rows):
  check_relations(c,dataset)
  return {'inserted':inserted,'skipped':skipped}
 @app.get('/api/template/{kind}')
-def template(kind:str,request:Request,format:str='csv'):
+def template(kind:str,request:Request,format:str='csv',business:str=''):
  u=auth(request)
  if kind not in SCHEMAS:err('未知数据类型')
- header=['external_id',*SCHEMAS[kind]['fields']]
+ try:fields=sectors.template_fields(business) if kind=='business_day' and business else SCHEMAS[kind]['fields']
+ except ValueError as ex:err(str(ex))
+ header=['external_id',*fields]
  if format=='xlsx':
   wb=Workbook();ws=wb.active;ws.title='数据';ws.append(header);out=io.BytesIO();wb.save(out);content=out.getvalue();mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
  else:
   content=('\ufeff'+','.join(header)+'\n').encode();format='csv';mime='text/csv;charset=utf-8'
  return Response(content,media_type=mime,headers={'Content-Disposition':f'attachment; filename="{kind}-template.{format}"'})
 @app.post('/api/import/preview')
-async def preview(request:Request,kind:str,dataset:str,property_id:str,filename:str):
+async def preview(request:Request,kind:str,dataset:str,property_id:str,filename:str,business:str=''):
  u=auth(request);scope(u,dataset,property_id,kind,True)
  if kind not in SCHEMAS:err('未知数据类型')
  content=bytearray()
@@ -440,6 +459,9 @@ async def preview(request:Request,kind:str,dataset:str,property_id:str,filename:
    reader=csv.DictReader(io.StringIO(bytes(content).decode('utf-8-sig')));headers=reader.fieldnames;rows=list(reader)
   else:err('仅支持 UTF-8 CSV 和 .xlsx')
   expected=['external_id',*SCHEMAS[kind]['fields']]
+  if kind=='business_day' and business:
+   expected=['external_id',*sectors.template_fields(business)]
+   if any(r.get('business')!=business for r in rows):err('日报业务与所选模板不一致')
   if headers!=expected:err('表头或顺序不匹配，请下载本类型模板')
   if not rows:err('没有可导入的数据行')
   with db() as c:
@@ -531,6 +553,7 @@ def metrics(rs,start,end,asof):
  availability=available if inventory_complete else None
  active_props=[p for p in group['property'] if p['status'] not in ['closed','planning'] or p['code'] in {x['_property'] for x in fs+costs+inventory}]
  closed={(x['_property'],x['day']) for x in inventory if not any(y['is_open'] for y in inventory if (x['_property'],x['day'])==(y['_property'],y['day']))}
+ closed|=sectors.closed_project_days(group)
  coverage_expected={(p['code'],d) for p in active_props for d in days} - closed
  coverage={(x['_property'],x['day']) for x in group['coverage'] if x['complete']}
  missing_cost=len(coverage_expected-coverage)
@@ -561,7 +584,7 @@ def metrics(rs,start,end,asof):
    details.append({'id':o['_id'],'property_id':key[0],'order_no':key[1],'channel':o['channel'],'status':o['status'],'booking_amount':o['booking_amount'],'fulfilled_revenue':round(total(period_fs)-total(period_ps,'revenue_reversal'),2),'room_nights':total(period_fs,'room_nights'),'paid_net':round(total([x for x in period_ps if x['type']=='collection'])-total([x for x in period_ps if x['type']=='refund']),2),'pending':round(wait,2),'customer_code':o['customer_code'],'owner':o['owner']})
  future=[]
  for i in range(90):
-  d=(date.fromisoformat(asof)+timedelta(days=i)).isoformat();iv=[x for x in group['inventory'] if x['day']==d];reserv=[x for x in group['reservation'] if x['day']==d]
+  d=(date.fromisoformat(asof)+timedelta(days=i)).isoformat();iv=[x for x in group['inventory'] if x['day']==d and x['_property'] in hotel_codes];reserv=[x for x in group['reservation'] if x['day']==d and x['_property'] in hotel_codes]
   booked=sum(x['rooms'] for x in reserv if x['status']=='confirmed');can=total(iv,'available');locked=total(iv,'locked')
   keys={(x['_property'],x['room_type']) for x in iv};complete=bool(hotel_props) and {(p['code'],t) for p in hotel_props for t in known_types[p['code']]}<=keys
   future.append({'day':d,'available':can if complete else None,'booked':booked,'cancelled':sum(x['rooms'] for x in reserv if x['status']=='cancelled'),'locked':locked,'out_of_service':total(iv,'out_of_service'),'voucher_commitment':total(iv,'voucher_commitment'),'remaining':can-locked-booked if complete else None,'day_type':', '.join(sorted({x['day_type'] for x in iv})),'coverage':len(iv)})
@@ -623,10 +646,10 @@ def metrics(rs,start,end,asof):
  for dimension in ['property','room_type','day_type']:
   def event_key(x):return x['property_id'] if dimension=='property' else x['room_type'] if dimension=='room_type' else day_type(x['property_id'],x['day'])
   def inv_key(x):return x['_property'] if dimension=='property' else x['room_type'] if dimension=='room_type' else x['day_type']
-  keys={event_key(x) for x in room_events}|{inv_key(x) for x in inventory}
+  keys={event_key(x) for x in room_events}|{inv_key(x) for x in inventory if x['_property'] in hotel_codes}
   rows=[]
   for key in sorted(keys):
-   ev=[x for x in room_events if event_key(x)==key];iv=[x for x in inventory if inv_key(x)==key];inc=round(sum(x['revenue'] for x in ev),2);night=sum(x['nights'] for x in ev);den=total(iv,'available') if iv and inventory_complete and key!='unknown' else None
+   ev=[x for x in room_events if event_key(x)==key];iv=[x for x in inventory if x['_property'] in hotel_codes and inv_key(x)==key];inc=round(sum(x['revenue'] for x in ev),2);night=sum(x['nights'] for x in ev);den=total(iv,'available') if iv and inventory_complete and key!='unknown' else None
    rows.append(dict(key=key,revenue=inc if ev else None,nights=night if ev else None,available=den,occupancy=night/den if ev and den else None,adr=inc/night if night else None,revpar=inc/den if ev and den else None))
   result['lodging_analysis'][dimension]=rows
  # Empty ledgers are unknown business performance, never fabricated zero actuals.
@@ -670,7 +693,8 @@ def metrics(rs,start,end,asof):
  result['operator']['overdue']=round(sum(x['overdue'] for x in commission_balances),2)
  for b in commission_balances:
   if b['overdue']>0:result['alerts'].append(dict(title='运营公司合同佣金逾期',severity='major',evidence=f"合同 {b['contract_code']}，按{b['settlement_days']}天账期，逾期未收{b['overdue']:.2f}元；到账按合同先进先抵",department='finance',property_id=b['property_id'],owner='',due_date=asof,order_no=''))
- return business.augment(result,group,start,end,asof,allocations)
+ result=business.augment(result,group,start,end,asof,allocations)
+ return sectors.augment(result,group,start,end,asof,rs)
 
 @app.get('/api/dashboard')
 def dashboard(request:Request,dataset:str='actual',property_id:str='',start:str='',end:str='',asof:str=''):
@@ -680,6 +704,7 @@ def dashboard(request:Request,dataset:str='actual',property_id:str='',start:str=
  with db() as c:rs=records(c,dataset,props=allowed_props(c,u,dataset,property_id))
  result=metrics(rs,start,end,asof)
  if u['role']=='operations':
+  sectors.redact_operations(result)
   for k in ['cost','acquisition','commission','known_contribution','contribution','received','pending','advance','principal_liability','receivable','platform_fees_withheld','collections','refunds','paid_net']:result['metrics'].pop(k,None)
   result['operator']=None;result['commissions']=[]
   result['target_comparisons']=[{k:v for k,v in x.items() if k not in ['cost','known_cost','cost_gap']} for x in result['target_comparisons']]

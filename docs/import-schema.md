@@ -183,7 +183,7 @@ external_id 为必填稳定业务编号。同类型、同数据集、同项目�
 |---|---|---|---|---|
 |external_id|稳定外部编号|text|是||
 |day|发现日|date|是||
-|department|部门|select|是|frontdesk, rooms, dining, cleaning, kitchen, finance, marketing, data|
+|department|部门|select|是|frontdesk, rooms, dining, cleaning, kitchen, finance, marketing, data, water, spa, goods|
 |title|问题 / 检查项|text|是||
 |severity|严重性|select|是|normal, major, redline|
 |order_no|关联订单|text|否||
@@ -268,7 +268,7 @@ external_id 为必填稳定业务编号。同类型、同数据集、同项目�
 |---|---|---|---|---|
 |external_id|稳定外部编号|text|是||
 |code|标准代码|text|是||
-|department|部门|select|是|frontdesk, rooms, dining, cleaning, kitchen|
+|department|部门|select|是|frontdesk, rooms, dining, cleaning, kitchen, water, spa, goods|
 |title|检查项|text|是||
 |standard|合格标准|text|是||
 |redline|重大红线|bool|是||
@@ -300,3 +300,28 @@ external_id 为必填稳定业务编号。同类型、同数据集、同项目�
 |owner|处理负责人|text|是||
 |response|回复内容|text|否||
 |status|处理状态|select|是|open, responded, resolved|
+
+## 分业态营业与运营日报 / business_day
+
+|字段|说明|类型|必填|枚举|
+|---|---|---|---|---|
+|external_id|稳定外部编号|text|是||
+|day|营业日期|date|是||
+|business|业务板块|select|是|dining, water, spa, goods|
+|is_open|当天实际营业|bool|是||
+|complete|运营数量已核对（不代表成本完整）|bool|是||
+|available_tables|实际开放餐桌数|integer|否||
+|meal_periods|实际营业餐次（如午晚餐为2）|integer|否||
+|served_tables|实际开台桌次（不是订单数）|integer|否||
+|waste_cost|食材损耗金额（已含耗用，不重复记费用）|number|否||
+|visitors|实际入园 / 服务人次（含免费）|integer|否||
+|daily_capacity|核准当日接待上限（人次，非瞬时容量）|integer|否||
+|safety_incidents|已核对安全事件数（无事件填0）|integer|否||
+|appointments|归属当天的预约总数（同批预约）|integer|否||
+|completed_appointments|上述预约中实际完成数|integer|否||
+|available_minutes|全部开放工位可服务分钟数|integer|否||
+|used_minutes|上述工位实际占用分钟数|integer|否||
+|labor_hours|实际出勤总工时|number|否||
+|source_ref|原系统 / 日结凭证编号|text|否||
+|owner|核对负责人|text|是||
+|note|营业、数量及口径说明|text|否||

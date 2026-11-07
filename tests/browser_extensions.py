@@ -29,7 +29,7 @@ with sync_playwright() as p:
   reviews=page.request.get(BASE+'/api/records/review?dataset=demo&property_id=bhl').json()['records'];review=next(r for r in reviews if r['external_id']==RUN+'-review');assert '13800138000' not in review['data']['content']
   page.locator('[data-view="channels"]').click();page.wait_for_function("document.querySelector('#workspace').textContent.includes('同批匿名观看客户转化')")
   assert 'DEMO-COHORT' in page.locator('#workspace').inner_text()
-  page.locator('[data-view="business"]').click();page.wait_for_function("document.querySelector('#workspace').textContent.includes('会员与预售券权益余额')")
+  page.locator('[data-view="retail"]').click();page.wait_for_function("document.querySelector('#workspace').textContent.includes('会员与预售券权益余额')")
   assert 'DEMO-RIGHT-2' in page.locator('#workspace').inner_text()
   page.locator('[data-view="targets"]').click();page.wait_for_function("document.querySelector('#workspace').textContent.includes('逐项目 / 渠道目标差异')")
   assert not errors,errors

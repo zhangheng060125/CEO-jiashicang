@@ -6,7 +6,7 @@ let signedIn=false;
 try{signedIn=sessionStorage.getItem('senhuo-static-session')==='demo';}catch{}
 function session(value){signedIn=value;try{value?sessionStorage.setItem('senhuo-static-session','demo'):sessionStorage.removeItem('senhuo-static-session');}catch{}}
 async function asset(name){
- if(!cached.has(name))cached.set(name,fetch(new URL('demo/'+name+'?v=1.5.0',base),{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('演示快照尚未发布，请稍后刷新。');return r.json();}).catch(e=>{cached.delete(name);throw e;}));
+ if(!cached.has(name))cached.set(name,fetch(new URL('demo/'+name+'?v=1.6.0',base),{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('演示快照尚未发布，请稍后刷新。');return r.json();}).catch(e=>{cached.delete(name);throw e;}));
  return cached.get(name);
 }
 function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});}
@@ -51,7 +51,7 @@ export async function request(url,options={}){
   if(path.startsWith('/api/records/')){
    const kind=path.split('/').at(-1),schemas=await asset('schema.json');
    if(!Object.hasOwn(schemas,kind))return json({detail:'未知数据类型'},404);
-   return json({records:await records(kind,u.searchParams.get('property_id'))});
+   return json({records:(await records(kind,u.searchParams.get('property_id'))).filter(r=>!u.searchParams.get('business')||r.data.business===u.searchParams.get('business'))});
   }
   if(/^\/api\/order\/\d+$/.test(path)){
    const rows=await records(),order=rows.find(r=>r.kind==='order'&&r.id===Number(path.split('/').at(-1)));
@@ -70,12 +70,12 @@ export async function download(url){
  if(!Object.hasOwn(schemas,kind))throw Error('没有对应模板');
  if(u.pathname.startsWith('/api/template/')){
   const a=document.createElement('a'),xlsx=u.searchParams.get('format')==='xlsx';
-  a.href=new URL(xlsx?'templates/all-templates.xlsx':`templates/${kind}.csv`,base);a.download=xlsx?'all-templates.xlsx':`${kind}.csv`;a.click();return;
+  const sector=kind==='business_day'&&['dining','water','spa','goods'].includes(u.searchParams.get('business'))?'-'+u.searchParams.get('business'):'';a.href=new URL(xlsx?'templates/all-templates.xlsx':`templates/${kind}${sector}.csv`,base);a.download=xlsx?'all-templates.xlsx':`${kind}${sector}.csv`;a.click();return;
  }
  if(!u.pathname.startsWith('/api/export/'))throw Error('此下载需要后台');
  if(u.searchParams.get('dataset')!=='demo')throw Error('只允许导出演示记录');
  const start=u.searchParams.get('start'),end=u.searchParams.get('end');
- const rows=(await records(kind,u.searchParams.get('property_id'))).filter(r=>{const d=r.data.day||r.data.order_date;return !d||(!start||d>=start)&&(!end||d<=end);});
+ const rows=(await records(kind,u.searchParams.get('property_id'))).filter(r=>{if(u.searchParams.get('business')&&r.data.business!==u.searchParams.get('business'))return false;const d=r.data.day||r.data.order_date;return !d||(!start||d>=start)&&(!end||d<=end);});
  const fields=Object.keys(schemas[kind].fields),header=['property_id','external_id',...fields,'version','updated_at'];
  function cell(v){if(v==null)v='';if(typeof v==='string'&&/^[=+\-@\t\r]/.test(v))v="'"+v;return '"'+String(v).replaceAll('"','""')+'"';}
  const csv=[header,...rows.map(r=>[r.property_id,r.external_id,...fields.map(k=>r.data[k]),r.version,r.updated_at])].map(r=>r.map(cell).join(',')).join('\r\n');

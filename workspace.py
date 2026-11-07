@@ -21,7 +21,7 @@ import capture_ocr
 
 MANAGEMENT={'admin','executive','manager'}
 FINANCE={'admin','finance'}
-DEPARTMENTS={'frontdesk','rooms','dining','cleaning','kitchen','finance','marketing','data'}
+DEPARTMENTS={'frontdesk','rooms','dining','cleaning','kitchen','finance','marketing','data','water','spa','goods'}
 MAX_BYTES=64*1024*1024
 OCR_SLOTS=threading.BoundedSemaphore(2)
 VIDEO_LOCKS={}

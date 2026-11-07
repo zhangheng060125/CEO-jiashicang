@@ -10,9 +10,12 @@ fi
 .runtime/venv/bin/python seed_demo.py
 .runtime/venv/bin/python seed_extensions.py
 .runtime/venv/bin/python seed_workspace_demo.py
+.runtime/venv/bin/python seed_sectors_demo.py
 .runtime/venv/bin/python scripts/generate_templates.py
 .runtime/venv/bin/python -m unittest discover -s tests -v
 node --check app.js
 node --check preview.js
 node --check transport.js
 node --check workspace.js
+
+node --check sectors.js
