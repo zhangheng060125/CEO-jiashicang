@@ -12,9 +12,12 @@ class StaticDemoTests(unittest.TestCase):
   self.assertTrue(records)
   self.assertTrue(all(r['dataset']=='demo' for r in records))
   orders={(r['property_id'],r['data']['order_no']) for r in records if r['kind']=='order'}
+  platform_lines={(r['property_id'],r['data']['order_no'],r['data']['line_no']) for r in records if r['kind']=='commerce_line'}
   self.assertTrue(all(no.startswith('DEMO-') for prop,no in orders))
   for r in records:
-   if r['kind']!='order' and r['data'].get('order_no'):self.assertIn((r['property_id'],r['data']['order_no']),orders)
+   if r['kind'] in ['commerce_event','commerce_cost'] and r['data'].get('order_no'):self.assertIn((r['property_id'],r['data']['order_no'],r['data']['line_no']),platform_lines)
+   elif r['kind'] not in ['order','commerce_line'] and r['data'].get('order_no'):self.assertIn((r['property_id'],r['data']['order_no']),orders)
+   if r['kind']=='property':self.assertNotIn('B05',json.dumps(r['data'],ensure_ascii=False))
 
  def test_reports_have_matching_scope_dates_and_order_totals(self):
   manifest=json.loads((ROOT/'demo/manifest.json').read_text())

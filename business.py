@@ -60,7 +60,7 @@ def reversal_allocations(fs,ps):
 
 def validate_relations(index):
  for (prop,kind),items in index.items():
-  if kind=='property':continue
+  if kind=='property' or kind.startswith('commerce_'):continue
   group={k:v for (p,k),v in index.items() if p==prop}
   product={x['code']:x for x in group.get('product',[])};entitlements={x['code']:x for x in group.get('entitlement',[])}
   natural={'alert_rule':lambda x:(x['code'],x['channel']),'product':lambda x:x['code'],'entitlement':lambda x:x['code'],'sop_item':lambda x:x['code'],'target':lambda x:(x['start'],x['end'],x['channel'],x['scenario'])}

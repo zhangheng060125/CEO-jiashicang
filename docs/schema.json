@@ -23,6 +23,7 @@
           "restaurant",
           "water",
           "spa",
+          "commerce",
           "other"
         ]
       },
@@ -1332,6 +1333,605 @@
           "responded",
           "resolved"
         ]
+      }
+    }
+  },
+  "commerce_product": {
+    "label": "森活优选商品与合作目录",
+    "fields": {
+      "code": {
+        "label": "SKU/产品代码",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "name": {
+        "label": "产品名称",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "mode": {
+        "label": "经营模式",
+        "type": "select",
+        "required": true,
+        "options": [
+          "self",
+          "joint",
+          "affiliate",
+          "retail",
+          "other"
+        ]
+      },
+      "product_type": {
+        "label": "商品形态",
+        "type": "select",
+        "required": true,
+        "options": [
+          "physical",
+          "voucher",
+          "service",
+          "other"
+        ]
+      },
+      "supplier": {
+        "label": "供应商/合作方",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "category": {
+        "label": "产品品类",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "owned_stock": {
+        "label": "平台承担自有库存",
+        "type": "bool",
+        "required": true,
+        "options": null
+      },
+      "active": {
+        "label": "在售",
+        "type": "bool",
+        "required": true,
+        "options": null
+      },
+      "unit": {
+        "label": "单位",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "reference_price": {
+        "label": "参考售价（非实际成交价）",
+        "type": "number",
+        "required": false,
+        "options": null
+      },
+      "owner": {
+        "label": "产品负责人",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "note": {
+        "label": "合作合同及业务说明",
+        "type": "text",
+        "required": false,
+        "options": null
+      }
+    }
+  },
+  "commerce_line": {
+    "label": "森活优选订单行",
+    "fields": {
+      "order_no": {
+        "label": "平台订单号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "line_no": {
+        "label": "订单行编号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "order_date": {
+        "label": "下单日期",
+        "type": "date",
+        "required": true,
+        "options": null
+      },
+      "product_code": {
+        "label": "SKU/产品代码",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "mode": {
+        "label": "成交时经营模式",
+        "type": "select",
+        "required": true,
+        "options": [
+          "self",
+          "joint",
+          "affiliate",
+          "retail",
+          "other"
+        ]
+      },
+      "channel": {
+        "label": "成交渠道",
+        "type": "select",
+        "required": true,
+        "options": [
+          "unknown",
+          "douyin",
+          "xiaohongshu",
+          "wechat",
+          "miniapp",
+          "private",
+          "taobao",
+          "jd",
+          "pdd",
+          "offline",
+          "other"
+        ]
+      },
+      "traffic": {
+        "label": "流量属性",
+        "type": "select",
+        "required": true,
+        "options": [
+          "unknown",
+          "organic",
+          "paid"
+        ]
+      },
+      "campaign_code": {
+        "label": "可核对的投放活动代码",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "quantity": {
+        "label": "成交数量",
+        "type": "integer",
+        "required": true,
+        "options": null
+      },
+      "cancelled_quantity": {
+        "label": "已取消未履约数量（非实物退货）",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "amount": {
+        "label": "本行优惠后交易额（退款前）",
+        "type": "number",
+        "required": true,
+        "options": null
+      },
+      "recognition": {
+        "label": "合同收入确认方式",
+        "type": "select",
+        "required": true,
+        "options": [
+          "unconfirmed",
+          "gross",
+          "net"
+        ]
+      },
+      "collector": {
+        "label": "客户款收取方",
+        "type": "select",
+        "required": true,
+        "options": [
+          "unconfirmed",
+          "platform",
+          "supplier"
+        ]
+      },
+      "delivery": {
+        "label": "实际履约方式",
+        "type": "select",
+        "required": true,
+        "options": [
+          "shipping",
+          "pickup",
+          "redeem",
+          "service"
+        ]
+      },
+      "status": {
+        "label": "订单状态",
+        "type": "select",
+        "required": true,
+        "options": [
+          "confirmed",
+          "completed",
+          "cancelled"
+        ]
+      },
+      "ship_due": {
+        "label": "约定最晚发货日",
+        "type": "date",
+        "required": false,
+        "options": null
+      },
+      "settle_due": {
+        "label": "约定结算/佣金到期日",
+        "type": "date",
+        "required": false,
+        "options": null
+      },
+      "cost_complete": {
+        "label": "本行直接成本已核对（财务确认）",
+        "type": "bool",
+        "required": false,
+        "options": null
+      },
+      "park_property": {
+        "label": "关联园区项目代码（可空）",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "park_order": {
+        "label": "关联园区订单号（可空）",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "customer_code": {
+        "label": "匿名客户编号",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "owner": {
+        "label": "跟进负责人",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "note": {
+        "label": "合同与订单口径",
+        "type": "text",
+        "required": false,
+        "options": null
+      }
+    }
+  },
+  "commerce_event": {
+    "label": "森活优选支付履约与结算事件",
+    "fields": {
+      "order_no": {
+        "label": "平台订单号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "line_no": {
+        "label": "订单行编号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "day": {
+        "label": "实际发生日",
+        "type": "date",
+        "required": true,
+        "options": null
+      },
+      "type": {
+        "label": "事件类型",
+        "type": "select",
+        "required": true,
+        "options": [
+          "payment",
+          "refund",
+          "shipped",
+          "fulfilled",
+          "settlement",
+          "commission_received",
+          "commission_return",
+          "supplier_accrual",
+          "supplier_payout",
+          "supplier_credit"
+        ]
+      },
+      "amount": {
+        "label": "本次交易/资金金额（发货填0）",
+        "type": "number",
+        "required": true,
+        "options": null
+      },
+      "quantity": {
+        "label": "本次发货/履约/退回商品或权益数量",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "recognized_amount": {
+        "label": "本次确认/冲回的平台收入（净额须核实）",
+        "type": "number",
+        "required": false,
+        "options": null
+      },
+      "supplier_amount": {
+        "label": "本次增加/冲回代收合作方款",
+        "type": "number",
+        "required": false,
+        "options": null
+      },
+      "fee_amount": {
+        "label": "本次结算中平台扣费（不重复录成本）",
+        "type": "number",
+        "required": false,
+        "options": null
+      },
+      "funds_location": {
+        "label": "资金位置",
+        "type": "select",
+        "required": false,
+        "options": [
+          "channel",
+          "bank",
+          "supplier"
+        ]
+      },
+      "source_ref": {
+        "label": "原支付/物流/核销/结算凭证编号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "owner": {
+        "label": "记录负责人",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "note": {
+        "label": "原始依据",
+        "type": "text",
+        "required": false,
+        "options": null
+      }
+    }
+  },
+  "commerce_cost": {
+    "label": "森活优选成本与投放",
+    "fields": {
+      "day": {
+        "label": "费用归属日",
+        "type": "date",
+        "required": true,
+        "options": null
+      },
+      "category": {
+        "label": "成本类别",
+        "type": "select",
+        "required": true,
+        "options": [
+          "goods",
+          "logistics",
+          "packaging",
+          "advertising",
+          "creator",
+          "service",
+          "after_sale",
+          "other"
+        ]
+      },
+      "amount": {
+        "label": "成本金额（未知留空）",
+        "type": "number",
+        "required": false,
+        "options": null
+      },
+      "order_no": {
+        "label": "关联订单（空为未分摊公共费用）",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "line_no": {
+        "label": "关联订单行（与订单号同时填）",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "campaign_code": {
+        "label": "广告活动代码（用于可核对ROAS）",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "source_ref": {
+        "label": "成本/投放原始凭证编号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "owner": {
+        "label": "核对负责人",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "note": {
+        "label": "耗用及分摊依据；结算扣费不重复录入",
+        "type": "text",
+        "required": false,
+        "options": null
+      }
+    }
+  },
+  "commerce_traffic": {
+    "label": "森活优选流量与访问批次",
+    "fields": {
+      "day": {
+        "label": "访问批次日期",
+        "type": "date",
+        "required": true,
+        "options": null
+      },
+      "channel": {
+        "label": "渠道",
+        "type": "select",
+        "required": true,
+        "options": [
+          "unknown",
+          "douyin",
+          "xiaohongshu",
+          "wechat",
+          "miniapp",
+          "private",
+          "taobao",
+          "jd",
+          "pdd",
+          "offline",
+          "other"
+        ]
+      },
+      "level": {
+        "label": "统计层级",
+        "type": "select",
+        "required": true,
+        "options": [
+          "platform",
+          "product"
+        ]
+      },
+      "product_code": {
+        "label": "产品级必须填SKU（平台级留空）",
+        "type": "text",
+        "required": false,
+        "options": null
+      },
+      "visitors": {
+        "label": "该日该渠道去重访客UV",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "paying_visitors": {
+        "label": "同批访客中已支付人数",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "impressions": {
+        "label": "曝光次数",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "clicks": {
+        "label": "点击次数",
+        "type": "integer",
+        "required": false,
+        "options": null
+      },
+      "observed_through": {
+        "label": "归因观察截止日",
+        "type": "date",
+        "required": true,
+        "options": null
+      },
+      "cohort_complete": {
+        "label": "本批归因窗口已核对完整",
+        "type": "bool",
+        "required": true,
+        "options": null
+      },
+      "source_ref": {
+        "label": "原平台报表/批次编号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "owner": {
+        "label": "核对负责人",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "note": {
+        "label": "归因窗口与去重口径",
+        "type": "text",
+        "required": false,
+        "options": null
+      }
+    }
+  },
+  "commerce_stock": {
+    "label": "森活优选自有库存快照",
+    "fields": {
+      "day": {
+        "label": "快照日期",
+        "type": "date",
+        "required": true,
+        "options": null
+      },
+      "product_code": {
+        "label": "SKU/产品代码",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "warehouse": {
+        "label": "仓库/门店代码",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "on_hand": {
+        "label": "实物库存数量",
+        "type": "integer",
+        "required": true,
+        "options": null
+      },
+      "reserved": {
+        "label": "已锁定数量",
+        "type": "integer",
+        "required": true,
+        "options": null
+      },
+      "unusable": {
+        "label": "残损/不可售数量（不含锁定）",
+        "type": "integer",
+        "required": true,
+        "options": null
+      },
+      "last_outbound": {
+        "label": "最近实际出库日",
+        "type": "date",
+        "required": false,
+        "options": null
+      },
+      "source_ref": {
+        "label": "库存系统/盘点编号",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "owner": {
+        "label": "盘点负责人",
+        "type": "text",
+        "required": true,
+        "options": null
+      },
+      "note": {
+        "label": "库存口径",
+        "type": "text",
+        "required": false,
+        "options": null
       }
     }
   },

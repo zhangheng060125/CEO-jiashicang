@@ -6,7 +6,7 @@ let signedIn=false;
 try{signedIn=sessionStorage.getItem('senhuo-static-session')==='demo';}catch{}
 function session(value){signedIn=value;try{value?sessionStorage.setItem('senhuo-static-session','demo'):sessionStorage.removeItem('senhuo-static-session');}catch{}}
 async function asset(name){
- if(!cached.has(name))cached.set(name,fetch(new URL('demo/'+name+'?v=1.6.0',base),{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('演示快照尚未发布，请稍后刷新。');return r.json();}).catch(e=>{cached.delete(name);throw e;}));
+ if(!cached.has(name))cached.set(name,fetch(new URL('demo/'+name+'?v=1.7.0',base),{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('演示快照尚未发布，请稍后刷新。');return r.json();}).catch(e=>{cached.delete(name);throw e;}));
  return cached.get(name);
 }
 function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});}

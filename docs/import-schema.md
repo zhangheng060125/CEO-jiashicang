@@ -11,7 +11,7 @@ external_id 为必填稳定业务编号。同类型、同数据集、同项目�
 |external_id|稳定外部编号|text|是||
 |code|项目代码|text|是||
 |name|名称|text|是||
-|business|业务|select|是|hotel, restaurant, water, spa, other|
+|business|业务|select|是|hotel, restaurant, water, spa, commerce, other|
 |status|开放状态|select|是|unconfirmed, open, seasonal, planning, closed|
 |planned_rooms|规划房量|integer|否||
 |physical_rooms|物理房量|integer|否||
@@ -300,6 +300,122 @@ external_id 为必填稳定业务编号。同类型、同数据集、同项目�
 |owner|处理负责人|text|是||
 |response|回复内容|text|否||
 |status|处理状态|select|是|open, responded, resolved|
+
+## 森活优选商品与合作目录 / commerce_product
+
+|字段|说明|类型|必填|枚举|
+|---|---|---|---|---|
+|external_id|稳定外部编号|text|是||
+|code|SKU/产品代码|text|是||
+|name|产品名称|text|是||
+|mode|经营模式|select|是|self, joint, affiliate, retail, other|
+|product_type|商品形态|select|是|physical, voucher, service, other|
+|supplier|供应商/合作方|text|否||
+|category|产品品类|text|否||
+|owned_stock|平台承担自有库存|bool|是||
+|active|在售|bool|是||
+|unit|单位|text|是||
+|reference_price|参考售价（非实际成交价）|number|否||
+|owner|产品负责人|text|是||
+|note|合作合同及业务说明|text|否||
+
+## 森活优选订单行 / commerce_line
+
+|字段|说明|类型|必填|枚举|
+|---|---|---|---|---|
+|external_id|稳定外部编号|text|是||
+|order_no|平台订单号|text|是||
+|line_no|订单行编号|text|是||
+|order_date|下单日期|date|是||
+|product_code|SKU/产品代码|text|是||
+|mode|成交时经营模式|select|是|self, joint, affiliate, retail, other|
+|channel|成交渠道|select|是|unknown, douyin, xiaohongshu, wechat, miniapp, private, taobao, jd, pdd, offline, other|
+|traffic|流量属性|select|是|unknown, organic, paid|
+|campaign_code|可核对的投放活动代码|text|否||
+|quantity|成交数量|integer|是||
+|cancelled_quantity|已取消未履约数量（非实物退货）|integer|否||
+|amount|本行优惠后交易额（退款前）|number|是||
+|recognition|合同收入确认方式|select|是|unconfirmed, gross, net|
+|collector|客户款收取方|select|是|unconfirmed, platform, supplier|
+|delivery|实际履约方式|select|是|shipping, pickup, redeem, service|
+|status|订单状态|select|是|confirmed, completed, cancelled|
+|ship_due|约定最晚发货日|date|否||
+|settle_due|约定结算/佣金到期日|date|否||
+|cost_complete|本行直接成本已核对（财务确认）|bool|否||
+|park_property|关联园区项目代码（可空）|text|否||
+|park_order|关联园区订单号（可空）|text|否||
+|customer_code|匿名客户编号|text|否||
+|owner|跟进负责人|text|是||
+|note|合同与订单口径|text|否||
+
+## 森活优选支付履约与结算事件 / commerce_event
+
+|字段|说明|类型|必填|枚举|
+|---|---|---|---|---|
+|external_id|稳定外部编号|text|是||
+|order_no|平台订单号|text|是||
+|line_no|订单行编号|text|是||
+|day|实际发生日|date|是||
+|type|事件类型|select|是|payment, refund, shipped, fulfilled, settlement, commission_received, commission_return, supplier_accrual, supplier_payout, supplier_credit|
+|amount|本次交易/资金金额（发货填0）|number|是||
+|quantity|本次发货/履约/退回商品或权益数量|integer|否||
+|recognized_amount|本次确认/冲回的平台收入（净额须核实）|number|否||
+|supplier_amount|本次增加/冲回代收合作方款|number|否||
+|fee_amount|本次结算中平台扣费（不重复录成本）|number|否||
+|funds_location|资金位置|select|否|channel, bank, supplier|
+|source_ref|原支付/物流/核销/结算凭证编号|text|是||
+|owner|记录负责人|text|是||
+|note|原始依据|text|否||
+
+## 森活优选成本与投放 / commerce_cost
+
+|字段|说明|类型|必填|枚举|
+|---|---|---|---|---|
+|external_id|稳定外部编号|text|是||
+|day|费用归属日|date|是||
+|category|成本类别|select|是|goods, logistics, packaging, advertising, creator, service, after_sale, other|
+|amount|成本金额（未知留空）|number|否||
+|order_no|关联订单（空为未分摊公共费用）|text|否||
+|line_no|关联订单行（与订单号同时填）|text|否||
+|campaign_code|广告活动代码（用于可核对ROAS）|text|否||
+|source_ref|成本/投放原始凭证编号|text|是||
+|owner|核对负责人|text|是||
+|note|耗用及分摊依据；结算扣费不重复录入|text|否||
+
+## 森活优选流量与访问批次 / commerce_traffic
+
+|字段|说明|类型|必填|枚举|
+|---|---|---|---|---|
+|external_id|稳定外部编号|text|是||
+|day|访问批次日期|date|是||
+|channel|渠道|select|是|unknown, douyin, xiaohongshu, wechat, miniapp, private, taobao, jd, pdd, offline, other|
+|level|统计层级|select|是|platform, product|
+|product_code|产品级必须填SKU（平台级留空）|text|否||
+|visitors|该日该渠道去重访客UV|integer|否||
+|paying_visitors|同批访客中已支付人数|integer|否||
+|impressions|曝光次数|integer|否||
+|clicks|点击次数|integer|否||
+|observed_through|归因观察截止日|date|是||
+|cohort_complete|本批归因窗口已核对完整|bool|是||
+|source_ref|原平台报表/批次编号|text|是||
+|owner|核对负责人|text|是||
+|note|归因窗口与去重口径|text|否||
+
+## 森活优选自有库存快照 / commerce_stock
+
+|字段|说明|类型|必填|枚举|
+|---|---|---|---|---|
+|external_id|稳定外部编号|text|是||
+|day|快照日期|date|是||
+|product_code|SKU/产品代码|text|是||
+|warehouse|仓库/门店代码|text|是||
+|on_hand|实物库存数量|integer|是||
+|reserved|已锁定数量|integer|是||
+|unusable|残损/不可售数量（不含锁定）|integer|是||
+|last_outbound|最近实际出库日|date|否||
+|source_ref|库存系统/盘点编号|text|是||
+|owner|盘点负责人|text|是||
+|note|库存口径|text|否||
 
 ## 分业态营业与运营日报 / business_day
 

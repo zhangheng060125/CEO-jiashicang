@@ -106,6 +106,21 @@ class WorkspaceTests(unittest.TestCase):
   self.assertFalse(response.json()['cost_created']);self.assertEqual(self.get(iid)['status'],'archived');self.assertEqual(self.get(iid)['finance_class'],'purchase')
   with s.db() as c:self.assertEqual(s.records(c,'actual','cost'),[])
   self.assertEqual(self.finance.get('/api/workspace/items?dataset=actual').json()['summary']['documents_pending'],0)
+ def test_platform_receipt_books_to_separate_commerce_cost_ledger(self):
+  media=self.client.post('/api/workspace/media?dataset=actual&property_id=youxuan&filename=receipt.png',content=picture())
+  self.assertEqual(media.status_code,200)
+  with patch('capture_ocr.analyze',return_value={'fields':{'amount':38,'day':s.TODAY()},'needs_confirmation':True}):
+   created=self.client.post('/api/workspace/items',json={'dataset':'actual','property_id':'youxuan','kind':'document','client_key':'select-receipt','media_ids':[media.json()['id']]})
+   self.assertEqual(created.status_code,200);iid=created.json()['id'];deadline=time.monotonic()+10
+   while self.get(iid)['ocr_status'] in ['pending','processing']:
+    if time.monotonic()>deadline:self.fail('Receipt recognition timed out')
+    time.sleep(.03)
+  row=self.get(iid);body=dict(version=row['version'],document_class='expense',confirmed_expense=True,amount=38,day=s.TODAY(),category='other',commerce_category='packaging')
+  first=self.client.post('/api/workspace/items/'+str(iid)+'/book',json=body);self.assertEqual(first.status_code,200,first.text)
+  self.assertTrue(self.client.post('/api/workspace/items/'+str(iid)+'/book',json=body).json()['reused'])
+  with s.db() as c:
+   self.assertEqual(s.records(c,'actual','cost'),[])
+   costs=s.records(c,'actual','commerce_cost');self.assertEqual(len(costs),1);self.assertEqual(costs[0]['data']['category'],'packaging');self.assertEqual(costs[0]['data']['amount'],38)
  def test_multiple_documents_queue_without_blocking_upload_or_losing_originals(self):
   release=threading.Event();ids=[]
   def delayed(files,data):

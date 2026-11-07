@@ -1,4 +1,4 @@
-import {isStaticPreview} from './transport.js?v=1.6.0';
+import {isStaticPreview} from './transport.js?v=1.7.0';
 // Preview navigation and explanations; business data continues to come from the API.
 export function createPreview({api, modal, toast, state, navigate, openOrder, logout}) {
  const $=s=>document.querySelector(s);

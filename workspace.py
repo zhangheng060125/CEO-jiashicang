@@ -399,7 +399,7 @@ def install(s):
   with s.db() as c:
    c.execute('BEGIN IMMEDIATE');row=item(c,u,iid)
    if row['cost_id']:
-    if not c.execute("SELECT 1 FROM records WHERE id=? AND kind='cost'",(row['cost_id'],)).fetchone():s.err('关联费用已被删除，请财务核对处理',409)
+    if not c.execute("SELECT 1 FROM records WHERE id=? AND kind IN ('cost','commerce_cost')",(row['cost_id'],)).fetchone():s.err('关联费用已被删除，请财务核对处理',409)
     return {'cost_id':row['cost_id'],'reused':True}
    version(row,b)
    if row['kind']!='document' or row['ocr_status'] in ['pending','processing']:s.err('请等待识别完成，或失败后由财务人工核对')
@@ -409,9 +409,14 @@ def install(s):
    for digest in digests:
     if c.execute('SELECT 1 FROM work_booked_documents WHERE dataset=? AND digest=?',(row['dataset'],digest)).fetchone():s.err('此单据已入账，不能跨项目重复计费；共同费用须由财务核对分摊',409)
    data={'day':b.get('day'),'category':b.get('category'),'amount':b.get('amount'),'scope':b.get('scope','park'),'order_no':b.get('order_no',''),'business':b.get('business',''),'product_code':'','note':f'单据归档 #{iid}；财务确认：{u["username"]}；{merchant}；票号{invoice}'}
-   clean=s.validate('cost',data)
+   prop=c.execute("SELECT payload FROM records WHERE kind='property' AND dataset=? AND property_id=?",(row['dataset'],row['property_id'])).fetchone()
+   platform=prop and json.loads(prop['payload'])['business']=='commerce'
+   kind='commerce_cost' if platform else 'cost'
+   if platform:
+    data={'day':b.get('day'),'category':b.get('commerce_category','other'),'amount':b.get('amount'),'order_no':b.get('order_no',''),'line_no':b.get('line_no',''),'campaign_code':'','source_ref':'DOCUMENT-'+str(iid),'owner':u['username'],'note':data['note']}
+   clean=s.validate(kind,data)
    if clean['amount'] is None:s.err('必须确认实际金额，未知不能填0')
-   rid=s.save_record(c,u,'cost',row['dataset'],row['property_id'],'DOCUMENT-'+str(iid),clean);s.check_relations(c,row['dataset'])
+   rid=s.save_record(c,u,kind,row['dataset'],row['property_id'],'DOCUMENT-'+str(iid),clean);s.check_relations(c,row['dataset'])
    for digest in set(digests):c.execute('INSERT INTO work_booked_documents VALUES(?,?,?,?,?)',(row['dataset'],row['property_id'],digest,iid,rid))
    c.execute("UPDATE work_items SET cost_id=?,status='booked',review_result='expense' WHERE id=?",(rid,iid));message(c,u,row,'booking',f'已核对为实际费用并关联成本记录 #{rid}；未自动确认收付款或全部成本完整')
   return {'cost_id':rid,'reused':False}

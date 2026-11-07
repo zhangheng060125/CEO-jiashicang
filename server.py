@@ -2,6 +2,7 @@
 import os, json, sqlite3, secrets, hashlib, hmac, csv, io, math, calendar
 import business
 import sectors
+import commerce
 import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -18,7 +19,7 @@ NOW=lambda: datetime.now(timezone.utc).isoformat()
 # field: [label, type, required, options/default/help]
 def f(label,typ='text',required=True,options=None): return dict(label=label,type=typ,required=required,options=options)
 SCHEMAS={
- 'property':dict(label='酒店与项目',fields={'code':f('项目代码'),'name':f('名称'),'business':f('业务','select',True,['hotel','restaurant','water','spa','other']),'status':f('开放状态','select',True,['unconfirmed','open','seasonal','planning','closed']),'planned_rooms':f('规划房量','integer',False),'physical_rooms':f('物理房量','integer',False),'note':f('待确认背景','text',False)}),
+ 'property':dict(label='酒店与项目',fields={'code':f('项目代码'),'name':f('名称'),'business':f('业务','select',True,['hotel','restaurant','water','spa','commerce','other']),'status':f('开放状态','select',True,['unconfirmed','open','seasonal','planning','closed']),'planned_rooms':f('规划房量','integer',False),'physical_rooms':f('物理房量','integer',False),'note':f('待确认背景','text',False)}),
  'inventory':dict(label='逐日房态 / 营业日历',fields={'day':f('日期','date'),'room_type':f('房型 / 项目','text'),'physical':f('当日物理房量','integer'),'out_of_service':f('维修停用','integer'),'available':f('当日可售房量','integer'),'locked':f('锁房（可售内保留）','integer'),'voucher_commitment':f('未预约券承诺','integer'),'is_open':f('实际营业','bool'),'day_type':f('日类型','select',True,['workday','weekend','holiday']),'rate':f('参考房价','number',False)}),
  'order':dict(label='订单',fields={'order_no':f('订单号'),'order_date':f('下单日期','date'),'checkin':f('服务开始日','date'),'checkout':f('结束日（住宿离店日）','date'),'kind':f('订单类型','select',True,['stay','dining','water','spa','voucher','membership','goods','consignment','other']),'status':f('订单状态','select',True,['confirmed','completed','cancelled']),'booking_amount':f('交易额（退款前）','number'),'customer_code':f('客户匿名编号','text',False),'channel':f('最终成交渠道','select',True,['unknown','douyin','xiaohongshu','wechat','ctrip','meituan','dianping','miniapp','private','offline','other']),'discovery':f('首次发现来源','text',False),'assist':f('辅助影响来源','text',False),'traffic':f('流量属性','select',True,['unknown','organic','paid']),'campaign_code':f('营销活动编号','text',False),'contract_code':f('结算合同代码','text',False),'owner':f('跟进负责人','text',False),'principal_amount':f('代销应付货主本金（非代销留空）','number',False)}),
  'reservation':dict(label='每日预约',fields={'order_no':f('订单号'),'day':f('入住夜日期','date'),'room_type':f('房型'),'rooms':f('预订房间数','integer'),'status':f('预约状态','select',True,['confirmed','cancelled'])}),
@@ -34,6 +35,7 @@ SCHEMAS={
  'target':dict(label='目标 / 预算 / 预测',fields={'start':f('开始日期','date'),'end':f('结束日期','date'),'channel':f('渠道（空为全渠道）','text',False),'scenario':f('口径','select',True,['budget','forecast']),'revenue':f('已履约收入目标','number',False),'cost':f('经营成本预算','number',False),'occupancy':f('入住率目标0至1','number',False),'owner':f('负责人')})
 }
 SCHEMAS.update(business.schemas(f))
+SCHEMAS.update(commerce.schemas(f))
 SCHEMAS['business_day']=sectors.schema(f)
 for kind in ['issue','sop_item']:
  SCHEMAS[kind]['fields']['department']['options']+=['water','spa','goods']
@@ -45,11 +47,12 @@ ROLES={'admin':set(SCHEMAS),'manager':{'inventory','order','reservation','fulfil
 ROLES['manager'].update({'alert_rule','product','entitlement','sop_item','sop_check','review'})
 ROLES['finance'].update({'alert_rule','entitlement'})
 ROLES['operations'].update({'touchpoint','review','product'})
-ROLES['manager'].add('business_day')
-ROLES['finance'].add('business_day')
+ROLES['manager'].update({'business_day','commerce_product','commerce_line','commerce_event','commerce_traffic','commerce_stock'})
+ROLES['finance'].update({'business_day',*commerce.KINDS})
+ROLES['operations'].update({'commerce_product','commerce_line','commerce_traffic','commerce_stock'})
 ROLES['executive']=set(ROLES['manager'])
 ROLES['staff']=set()
-FINANCIAL={'payment','cost','contract','operator_entry','coverage'}
+FINANCIAL={'payment','cost','contract','operator_entry','coverage','commerce_cost'}
 
 def connect():
  c=sqlite3.connect(DB,timeout=20);c.row_factory=sqlite3.Row;c.execute('PRAGMA foreign_keys=ON');return c
@@ -78,9 +81,25 @@ def init_db():
    path=DATA/'admin-password.txt';path.write_text('username: admin\npassword: '+password+'\n',encoding='utf8');path.chmod(0o600)
   for dataset in (['actual','demo'] if bootstrap else []):
    for code,name,business,note in [
-    ('bhl','森活百花里','hotel','中高端独栋、私汤；历史约60间或60余间，当前房量待确认'),('jtw','森活金汤湾','hotel','历史介绍62间；含温泉、餐饮、宴会及包厢，当前口径待确认'),('520','森活520','hotel','用户明确12间，逐日可售与开放状态待确认'),('bhcs','百花村舍','restaurant','餐饮拟独立运营，服务住客、外来客、宴请和团建'),('jtxy','金汤小院','restaurant','餐饮拟独立运营'),('water','森动水世界','water','季节经营，按实际营业日历统计'),('spa','B05 芳疗 SPA','spa','室外芳疗SPA试点'),('other','筹备及其他配套','other','高端餐饮、清吧、夜宵、电商、康养等筹备业务')]:
+    ('bhl','森活百花里','hotel','中高端独栋、私汤；历史约60间或60余间，当前房量待确认'),('jtw','森活金汤湾','hotel','历史介绍62间；含温泉、餐饮、宴会及包厢，当前口径待确认'),('520','森活520','hotel','用户明确12间，逐日可售与开放状态待确认'),('bhcs','百花村舍','restaurant','餐饮拟独立运营，服务住客、外来客、宴请和团建'),('jtxy','金汤小院','restaurant','餐饮拟独立运营'),('water','森动水世界','water','季节经营，按实际营业日历统计'),('spa','芳疗SPA','spa','室外芳疗SPA试点'),('youxuan','森活优选','commerce','线上销售平台；支持自营、联营、带货与零售，实际合同和经营数据待确认'),('other','筹备及其他配套','other','高端餐饮、清吧、夜宵、电商、康养等筹备业务')]:
     payload=dict(code=code,name=name,business=business,status='unconfirmed',planned_rooms=None,physical_rooms=12 if code=='520' else None,note=note)
     c.execute('INSERT OR IGNORE INTO records(kind,dataset,property_id,external_id,payload,updated_at) VALUES(?,?,?,?,?,?)',('property',dataset,code,code,json.dumps(payload,ensure_ascii=False),NOW()))
+
+
+  c.execute('CREATE TABLE IF NOT EXISTS app_migrations(name TEXT PRIMARY KEY,applied_at TEXT NOT NULL)')
+  if not c.execute("SELECT 1 FROM app_migrations WHERE name='v17_select_and_spa'").fetchone():
+   for dataset in ['actual','demo']:
+    row=c.execute("SELECT * FROM records WHERE kind='property' AND dataset=? AND property_id='spa'",(dataset,)).fetchone()
+    if row:
+     old=json.loads(row['payload']);updated={**old,'name':'芳疗SPA','note':old.get('note','').replace('B05','').strip()}
+     if old!=updated:
+      c.execute('UPDATE records SET payload=?,version=version+1,updated_at=? WHERE id=?',(json.dumps(updated,ensure_ascii=False),NOW(),row['id']))
+      audit(c,{'username':'系统升级（用户项目更名）'},'property_rename',row['id'],dataset,'spa',{'before':old,'after':updated})
+    if not c.execute("SELECT 1 FROM records WHERE kind='property' AND dataset=? AND property_id='youxuan'",(dataset,)).fetchone():
+     data=dict(code='youxuan',name='森活优选',business='commerce',status='unconfirmed',planned_rooms=None,physical_rooms=None,note='用户新增线上销售平台；经营方式、合同及实绩待确认')
+     c.execute('INSERT INTO records(kind,dataset,property_id,external_id,payload,updated_at) VALUES(?,?,?,?,?,?)',('property',dataset,'youxuan','youxuan',json.dumps(data,ensure_ascii=False),NOW()))
+     audit(c,{'username':'系统升级（用户新增平台）'},'property_create',None,dataset,'youxuan',{'after':data})
+   c.execute("INSERT INTO app_migrations VALUES('v17_select_and_spa',?)",(NOW(),))
 
 def unpack(row):
  d=dict(row);d['data']=json.loads(d.pop('payload'));return d
@@ -181,7 +200,9 @@ def validate(kind,data):
  if kind=='customer' and out['phone_last4'] and (len(out['phone_last4'])!=4 or not out['phone_last4'].isdigit()):err('客户信息仅允许手机号末4位')
  if kind=='issue' and out['status']=='closed' and not all(out[k] for k in ['remediation','review_result','reviewer']):err('关闭必须有整改证据、复查结果及复查人')
  if kind=='operator_entry' and out['type']=='commission_received' and not out['contract_code']:err('佣金到账必须关联实际合同')
- try:business.validate(kind,out)
+ try:
+  commerce.validate(kind,out)
+  business.validate(kind,out)
  except ValueError as ex:err(str(ex))
  return out
 
@@ -197,7 +218,7 @@ def check_relations(c,dataset):
    keys=[natural[kind](x) for x in items]
    if len(keys)!=len(set(keys)):err(f'{SCHEMAS[kind]["label"]}的业务键重复')
   for x in items:
-   if x.get('order_no') and kind!='order' and x['order_no'] not in orders:err('关联订单不存在：'+x['order_no'])
+   if x.get('order_no') and kind!='order' and kind not in commerce.KINDS and x['order_no'] not in orders:err('关联订单不存在：'+x['order_no'])
    if x.get('contract_code') and x['contract_code'] not in contracts:err('关联合同不存在')
    if kind=='target' and x.get('occupancy') is not None and index[(prop,'property')][0]['business']!='hotel':err('入住率目标仅适用于住宿项目')
    if kind=='order':
@@ -229,7 +250,9 @@ def check_relations(c,dataset):
       if sum(a['amount'] for a in ps if a['type']=='refund' and a['day']<=p['day'])>sum(a['amount'] for a in ps if a['type']=='collection' and a['day']<=p['day'])+.01:err('退款日期早于可用收款')
       if sum(a['revenue_reversal'] for a in ps if a['day']<=p['day'])>sum(a['amount'] for a in fs if a['day']<=p['day'])+.01:err('收入冲减日期早于对应履约')
 
- try:business.validate_relations(index)
+ try:
+  commerce.check_relations(index)
+  business.validate_relations(index)
  except ValueError as ex:err(str(ex))
 
 def save_record(c,u,kind,dataset,prop,ext,data,rid=None,version=None):
@@ -238,6 +261,13 @@ def save_record(c,u,kind,dataset,prop,ext,data,rid=None,version=None):
  if not isinstance(prop,str) or not prop:err('必须指定有效项目代码')
  ext=ext.strip()
  clean=validate(kind,data)
+ old_row=c.execute('SELECT payload FROM records WHERE id=?',(rid,)).fetchone() if rid else None
+ previous_data=json.loads(old_row['payload']) if old_row else {}
+ try:commerce.authorize(u,kind,clean,previous_data)
+ except PermissionError as ex:err(str(ex),403)
+ if kind=='coverage' and clean['complete'] and u['role'] not in commerce.FINANCE:
+  owner_property=c.execute("SELECT payload FROM records WHERE kind='property' AND dataset=? AND property_id=?",(dataset,prop)).fetchone()
+  if owner_property and json.loads(owner_property['payload'])['business']=='commerce':err('平台成本完整性仅由财务确认',403)
  if kind=='property' and clean['code']!=prop:err('项目代码必须与项目范围一致')
  if rid:
   old=c.execute('SELECT * FROM records WHERE id=?',(rid,)).fetchone()
@@ -299,6 +329,8 @@ def javascript():return FileResponse(ROOT/'app.js',media_type='text/javascript')
 def preview_javascript():return FileResponse(ROOT/'preview.js',media_type='text/javascript')
 @app.get('/capture')
 def capture_page():return FileResponse(ROOT/'index.html')
+@app.get('/commerce.js')
+def commerce_javascript():return FileResponse(ROOT/'commerce.js',media_type='text/javascript')
 @app.get('/sectors.js')
 def sectors_javascript():return FileResponse(ROOT/'sectors.js',media_type='text/javascript')
 @app.get('/templates/data-sources.csv')
@@ -358,17 +390,18 @@ def listing(kind:str,request:Request,dataset:str='actual',property_id:str='',bus
   rs=filter_business(records(c,dataset,kind,allowed_props(c,u,dataset,property_id)),kind,business)
  if u['role']=='operations' and kind=='business_day':
   rs=[{**r,'data':{k:v for k,v in r['data'].items() if k!='waste_cost'}} for r in rs]
- return {'records':rs}
+ return {'records':commerce.readable(rs,u)}
 
 @app.get('/api/export/{kind}')
 def export_records(kind:str,request:Request,dataset:str='actual',property_id:str='',start:str='',end:str='',business:str=''):
  u=auth(request);scope(u,dataset,property_id,kind)
  if kind not in SCHEMAS:err('未知记录类型')
  with db() as c:rs=filter_business(records(c,dataset,kind,allowed_props(c,u,dataset,property_id)),kind,business)
+ rs=commerce.readable(rs,u)
  if start or end:
   day_range(start,end)
   rs=[r for r in rs if not(r['data'].get('day') or r['data'].get('order_date')) or start<=(r['data'].get('day') or r['data'].get('order_date'))<=end]
- out=io.StringIO();writer=csv.writer(out);keys=[k for k in SCHEMAS[kind]['fields'] if not(u['role']=='operations' and kind=='business_day' and k=='waste_cost')];writer.writerow(['property_id','external_id',*keys,'version','updated_at'])
+ out=io.StringIO();writer=csv.writer(out);keys=[k for k in SCHEMAS[kind]['fields'] if not(u['role']=='operations' and kind=='business_day' and k=='waste_cost') and not(u['role']=='operations' and kind=='commerce_event' and k in commerce.PRIVATE_EVENT)];writer.writerow(['property_id','external_id',*keys,'version','updated_at'])
  def safe(v):
   if v is None:return ''
   if isinstance(v,bool):return 'true' if v else 'false'
@@ -398,6 +431,8 @@ def delete(kind:str,rid:int,request:Request,version:int):
   scope(u,row['dataset'],row['property_id'],kind,True)
   if row['version']!=version:err('记录版本已变化',409)
   original=json.loads(row['payload'])
+  try:commerce.authorize(u,kind,original,original)
+  except PermissionError as ex:err(str(ex),403)
   if kind=='issue' and original.get('alert_key','').startswith('FIELD:'):err('现场协同任务需保留原始证据，不能直接删除',409)
   if kind=='issue' and original['severity']=='redline' and original['status']!='closed':err('未关闭红线不能删除，请完成整改与复查',409)
   changed=c.execute('DELETE FROM records WHERE id=? AND version=?',(rid,version))
@@ -529,6 +564,9 @@ def day_range(start,end):
  if b<a or (b-a).days>365:err('选择有效日期范围（最多366天）')
  return [(a+timedelta(days=i)).isoformat() for i in range((b-a).days+1)]
 def metrics(rs,start,end,asof):
+ platform_report=commerce.aggregate(rs,start,end,asof)
+ park_props={r['property_id'] for r in rs if r['kind']=='property' and r['data']['business']!='commerce'}
+ rs=[r for r in rs if r['property_id'] in park_props and r['kind'] not in commerce.KINDS]
  days=day_range(start,end);within=lambda d:start<=d<=end
  group={k:[{**r['data'],'_id':r['id'],'_property':r['property_id'],'_external':r['external_id']} for r in rs if r['kind']==k] for k in SCHEMAS}
  orders={(o['_property'],o['order_no']):o for o in group['order']}
@@ -694,7 +732,9 @@ def metrics(rs,start,end,asof):
  for b in commission_balances:
   if b['overdue']>0:result['alerts'].append(dict(title='运营公司合同佣金逾期',severity='major',evidence=f"合同 {b['contract_code']}，按{b['settlement_days']}天账期，逾期未收{b['overdue']:.2f}元；到账按合同先进先抵",department='finance',property_id=b['property_id'],owner='',due_date=asof,order_no=''))
  result=business.augment(result,group,start,end,asof,allocations)
- return sectors.augment(result,group,start,end,asof,rs)
+ result=sectors.augment(result,group,start,end,asof,rs)
+ result['commerce']=platform_report
+ return result
 
 @app.get('/api/dashboard')
 def dashboard(request:Request,dataset:str='actual',property_id:str='',start:str='',end:str='',asof:str=''):
@@ -704,6 +744,7 @@ def dashboard(request:Request,dataset:str='actual',property_id:str='',start:str=
  with db() as c:rs=records(c,dataset,props=allowed_props(c,u,dataset,property_id))
  result=metrics(rs,start,end,asof)
  if u['role']=='operations':
+  result['commerce']=commerce.redact(result['commerce'],u)
   sectors.redact_operations(result)
   for k in ['cost','acquisition','commission','known_contribution','contribution','received','pending','advance','principal_liability','receivable','platform_fees_withheld','collections','refunds','paid_net']:result['metrics'].pop(k,None)
   result['operator']=None;result['commissions']=[]

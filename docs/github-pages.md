@@ -1,4 +1,4 @@
-# GitHub Pages 只读体验 · v1.6
+# GitHub Pages 只读体验 · v1.7
 
 在线网址：https://zhangheng060125.github.io/CEO-jiashicang/
 
@@ -40,4 +40,8 @@
 
 ## v1.6分业态经营
 
-新增`sectors.js`和服务端生成的分业态快照，保留项目子目录兼容。餐饮、住宿、游乐、温泉SPA及零售会员分别展示，支持精简模板与数据源盘点表下载。可直接体验餐厅：`?v=1.6.0&sector=dining&property=bhcs`；游乐：`?v=1.6.0&sector=water&property=water`。所有样例均明确属于demo，真实日报和上传仍需完整版后台。
+新增`sectors.js`和服务端生成的分业态快照，保留项目子目录兼容。餐饮、住宿、游乐、温泉SPA及零售会员分别展示，支持精简模板与数据源盘点表下载。可直接体验餐厅：`?v=1.7.0&sector=dining&property=bhcs`；游乐：`?v=1.7.0&sector=water&property=water`。所有样例均明确属于demo，真实日报和上传仍需完整版后台。
+
+## v1.7森活优选
+
+可使用`?v=1.7.0&platform=youxuan&property=youxuan`直接体验独立平台指标。新增`commerce.js`，所有金额均为模拟。平台商品录入、费用和结算保存只在完整版后台提供；Pages不会接收真实商品、订单或付款数据。

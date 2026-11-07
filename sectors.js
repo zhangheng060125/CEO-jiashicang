@@ -29,7 +29,7 @@ export function createSectors({state,api,modal,toast,navigate,editRecord,openKin
   const r=state().report,m=r.metrics;
   const sectorRevenue=k=>r.sectors[k].metrics.revenue;
   return '<div class="metrics">'+[
-   metric('集团净履约收入',fmt(m.revenue),'各业务权益履约收入合计，扣明确退款冲回','fulfillment','元'),
+   metric('园区净履约收入',fmt(m.revenue),'各业务权益履约收入合计，扣明确退款冲回','fulfillment','元'),
    metric('获客后经营贡献',fmt(m.contribution),'成本完整后：净履约收入 − 成本 − 获客 − 佣金','cost','元'),
    metric('期间实际到账',fmt(m.received),'银行收款 + 平台结算 − 银行退款','payment','元'),
    metric('截至期末待结算',fmt(m.pending),'平台累计净收款 − 累计银行结算','payment','元'),
@@ -122,7 +122,7 @@ export function createSectors({state,api,modal,toast,navigate,editRecord,openKin
   document.querySelectorAll('[data-sector-metric]').forEach(b=>b.onclick=()=>evidence(b.dataset.sectorKey,b.dataset.sectorMetric));
  }
  function automation() {
-  const rows=[['住宿','PMS、门锁/夜审','房态、逐夜入住、取消、房费分摊、收退款','店长 + PMS供应商','订单/房态5–15分钟；夜审日结'],['餐饮','POS收银 + 库存/采购','账单菜品、收费/赠送人次、开台、退菜；库存与食材耗用、损耗','餐饮经理 + 财务 + POS供应商','POS实时/15分钟；耗用日结'],['游乐','售票、核销闸机、营业排班','售票与核销关联、实际入园、免费人次、开园日历、日接待上限、安全事件','项目经理 + 票务供应商','核销5–15分钟；安全/日历日结'],['温泉 / SPA','预约、排班、项目核销','服务日同批预约/完成、散客、工位可售/占用分钟、实际工时','项目负责人 + 预约系统供应商','预约5–15分钟；排班日结'],['财务','支付商户、银行、财务系统','收款、退款、净结算、平台费、工资水电、费用归属与合同','财务负责人','支付回调；银行/费用日结'],['线上运营','OTA、抖音、小红书、视频号、会员平台','授权范围曝光、咨询、成交、预约、退款、核销；保留来源及未知','运营负责人 + 平台服务商','按开放接口和授权频率']];
+  const rows=[['森活优选','商城/抖店/小程序、ERP及商家报表','SKU/订单行、支付退款、物流签收或核销、佣金与结算、访问批次/投放/自有库存','平台运营 + 财务 + 商城/合作方供应商','按授权接口同步；库存/财务日结'],['住宿','PMS、门锁/夜审','房态、逐夜入住、取消、房费分摊、收退款','店长 + PMS供应商','订单/房态5–15分钟；夜审日结'],['餐饮','POS收银 + 库存/采购','账单菜品、收费/赠送人次、开台、退菜；库存与食材耗用、损耗','餐饮经理 + 财务 + POS供应商','POS实时/15分钟；耗用日结'],['游乐','售票、核销闸机、营业排班','售票与核销关联、实际入园、免费人次、开园日历、日接待上限、安全事件','项目经理 + 票务供应商','核销5–15分钟；安全/日历日结'],['温泉 / SPA','预约、排班、项目核销','服务日同批预约/完成、散客、工位可售/占用分钟、实际工时','项目负责人 + 预约系统供应商','预约5–15分钟；排班日结'],['财务','支付商户、银行、财务系统','收款、退款、净结算、平台费、工资水电、费用归属与合同','财务负责人','支付回调；银行/费用日结'],['线上运营','OTA、抖音、小红书、视频号、会员平台','授权范围曝光、咨询、成交、预约、退款、核销；保留来源及未知','运营负责人 + 平台服务商','按开放接口和授权频率']];
   return panel('自动采集：先接业务系统，再用AI补录',`<p class="muted">结构化订单和流水通过授权接口自动同步；照片与文件用OCR辅助读取。AI无法从发票推知实际入住、入园、食材耗用或银行是否到账。接入凭证不等于平台已连接，实际结果须看同步日志与对账。</p><div class="section-actions"><a class="button primary" href="./templates/data-sources.csv" download>下载数据源盘点表</a><button class="button" data-sector-view="workspace">员工拍单据 / 现场资料</button></div>`)+panel('需要各负责人准备的数据与授权',table(['板块','从哪里取','需要的数据','谁负责','建议频率'],rows.map(r=>r.map(esc))))+panel('落地顺序',`<ol class="workflow-list"><li><b>先盘点：</b>每家店填写系统名称、供应商联系人、接口/定时导出能力、账号授权范围、门店和订单编号；提供脱敏样例。</li><li><b>部署完整版：</b>正式HTTPS地址、持久数据库与附件磁盘、按岗位权限、备份及异常监控；密钥只放后端。</li><li><b>优先打通PMS + 餐饮POS + 财务：</b>建立门店、产品、订单及退款ID映射。接口应覆盖变更、取消、退款与历史回补，重复投递不得重复入账。</li><li><b>再接票务/闸机、预约、库存与营销：</b>没有API时由供应商提供定时文件投递；员工拍照作为补充，复杂票据交财务核对。</li><li><b>一家店试运行：</b>逐日比对原系统、支付、已履约收入和驾驶舱明细；对账通过后推广。财务保留费用确认与成本完整性审核。</li></ol><p class="work-warning">当前包含可用的签名接入入口和本地OCR；尚未配置任何真实供应商的自动同步程序。录音只保存回放，不自动转写。</p>`);
  }
  return {focus,heading,selector,cards,groupCards,groupPanels,chart,render,dictionary,configureForm,bind,automation,views,byView};
