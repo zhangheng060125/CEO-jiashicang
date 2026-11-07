@@ -9,3 +9,4 @@ python3 -m venv --system-site-packages .runtime/venv
 .runtime/venv/bin/python scripts/generate_templates.py
 .runtime/venv/bin/python -m unittest discover -s tests -v
 node --check app.js
+node --check preview.js

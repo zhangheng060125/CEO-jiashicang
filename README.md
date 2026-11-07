@@ -16,7 +16,13 @@ Python 3.12、Node.js（用于 JS 语法校验）。后端 FastAPI + SQLite；�
 
 数据库：`.runtime/hotel.sqlite3`（或 `HOTEL_DATA_DIR/hotel.sqlite3`）。数据存储在后端数据库，不依赖浏览器 localStorage。服务器仅提供明确列出的页面资源，不会通过HTTP暴露数据库、源码或凭据。
 
-## 已交付模块（v1.2）
+## 预览体验（v1.3）
+
+登录页点击「预览体验 · 免账号进入」，或访问部署后的 `/preview` 路径。进入后有六步导览：看经营、查订单、看房态、比渠道、核资金、做整改；支持自由探索、恢复默认视图和结束体验。所有业务仍由后端计算和保存，演示会话不能访问实际数据。
+
+默认使用最近演示履约日作为统计与未来房态的演示基准，避免样例随时间推移变成空页面。「恢复默认视图」不删除任何演示记录。生产配置默认关闭公开体验；需要开放的部署设置 `HOTEL_ALLOW_DEMO=1` 并重启，关闭时入口和后端登录都会停用。详见 [体验功能说明](docs/preview.md)。
+
+## 已交付模块（v1.3）
 
 - **CEO 首页**：履约净收入、间夜、入住率、ADR、RevPAR、未来7/30天预订、获客后经营贡献、到账和待结算；同一查询返回指标及对应订单。
 - **酒店与房态**：规划与物理房量、逐店逐日房型可售、停用、锁房、开放日历、工作日/周末/节假日与参考房价；未来7/30/90天确认预约与券承诺分开。
@@ -63,6 +69,7 @@ npm run check
 # 浏览器验收（需要本机 Chromium 与 Python Playwright）
 python tests/browser_smoke.py
 python tests/browser_extensions.py
+python tests/browser_preview.py
 python tests/restore_smoke.py
 python tests/browser_integrations.py
 python tests/tls_smoke.py

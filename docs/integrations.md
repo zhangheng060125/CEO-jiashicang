@@ -1,8 +1,9 @@
 # 数据接口与接入预留
 
-除专用签名接入入口与公开健康检查/登录外，`/api` 经营接口要求有效登录会话，并执行相同角色和项目校验。FastAPI提供OpenAPI结构（`/openapi.json`）；字段动态字典由 `/api/schema` 返回。当前未配置任何PMS、OTA、微信、支付或内容平台授权。
+除专用签名接入入口与公开健康检查、登录、预览元信息外，`/api` 经营接口要求有效登录会话，并执行相同角色和项目校验。FastAPI提供OpenAPI结构（`/openapi.json`）；字段动态字典由 `/api/schema` 返回。当前未配置任何PMS、OTA、微信、支付或内容平台授权。
 
 - `POST /api/login` / `POST /api/logout` / `GET /api/me`
+- `GET /api/preview-info`：公开只读体验开关与演示日期；禁用时仅返回enabled=false，不返回实际经营数据。体验页面路径为 `/preview`，仍使用后端受限演示会话。
 - `GET /api/schema`：角色可见的数据类型、字段类型、枚举及可写范围。
 - `GET/POST /api/records/{kind}`：列表与新增。写入提供 `dataset, property_id, external_id, data`。
 - `PUT /api/records/{kind}/{id}`：更新需要当前 `version`，版本冲突返回409。

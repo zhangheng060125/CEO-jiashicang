@@ -276,14 +276,26 @@ async def conflict(request,exc):return JSONResponse({'detail':'记录编号已�
 async def unavailable(request,exc):return JSONResponse({'detail':'数据库暂时忙碌或不可用，请稍后重试'},status_code=503)
 @app.get('/')
 def home():return FileResponse(ROOT/'index.html')
+@app.get('/preview')
+def preview_page():return FileResponse(ROOT/'index.html')
 @app.get('/app.js')
 def javascript():return FileResponse(ROOT/'app.js',media_type='text/javascript')
+@app.get('/preview.js')
+def preview_javascript():return FileResponse(ROOT/'preview.js',media_type='text/javascript')
 @app.get('/style.css')
 def stylesheet():return FileResponse(ROOT/'style.css',media_type='text/css')
 @app.get('/api/health')
 def health():
  with db() as c:c.execute('SELECT 1')
  return {'status':'ok','database':'sqlite','today':TODAY()}
+@app.get('/api/preview-info')
+def preview_info():
+ if os.environ.get('HOTEL_ALLOW_DEMO','1')!='1':return {'enabled':False}
+ with db() as c:
+  ready=bool(c.execute("SELECT 1 FROM records WHERE dataset='demo' AND kind='order' LIMIT 1").fetchone())
+  days=[json.loads(r['payload'])['day'] for r in c.execute("SELECT payload FROM records WHERE dataset='demo' AND kind='fulfillment'")]
+ end=max((d for d in days if d<=TODAY()),default=TODAY())
+ return {'enabled':True,'ready':ready,'start':(date.fromisoformat(end)-timedelta(days=29)).isoformat(),'end':end,'asof':end}
 @app.post('/api/login')
 async def login(request:Request):
  body=await read_json(request);demo=body.get('demo') is True
