@@ -73,3 +73,25 @@ python scripts/adapter_push.py https://已确定的实际域名 /映射完成的
 ```
 
 先在演示凭证上校验字段映射及重复投递，再为真实空间单独授权。凭证只允许业务数据写入，不能访问管理接口、账号或读取财务明细。它的权限独立于创建管理员的登录会话；不再使用时需在接入管理中显式撤销。
+
+
+## v1.5 协同与票据采集接口
+
+所有下列接口执行登录、项目、数据集和记录可见性校验。普通员工仅访问本人或被指派事项；协同归档不使用公开文件目录。
+
+- `GET /api/workspace/config`：本机OCR/中文/HEIC/PDF能力与附件限额；不返回密钥。
+- `POST /api/workspace/media?dataset=...&property_id=...&filename=...`：原始字节，最多64MB；校验真实文件类型和媒体时长，返回私有附件ID。
+- `GET /api/workspace/media/{id}`：授权预览，视频支持Range；`?download=true`下载原件。
+- `GET /api/workspace/items?dataset=...&property_id=...&offset=...`：授权提报、汇总和分页，单页100条，未关闭红线优先。
+- `GET /api/workspace/items/{id}`：原件、识别建议、指令、反馈及关联整改/费用。
+- `POST /api/workspace/items`：kind为inspection或document，提供稳定client_key及本人同项目的media_ids；单据须有照片/PDF/xlsx，可附录音。重复提交不新建。
+- `POST /api/workspace/items/{id}/messages`：反馈或管理指令；指令身份仅取登录的CEO/高管角色，附件不允许冒用或跨项目绑定。
+- `POST /api/workspace/items/{id}/assign`：管理者指派部门、负责人、期限和严重性，需version。
+- `POST /api/workspace/items/{id}/remediation`：负责人提交照片/录音/说明，需version；`/review`由管理者复查，红线禁止整改人自行通过。
+- `POST /api/workspace/items/{id}/recognize`：重新识别；原件先归档，后台双工作线程处理，未完成任务在服务启动时恢复。
+- `POST /api/workspace/items/{id}/book`：仅财务/集团管理员，确认expense、金额、日期、科目、费用主体及version；生成一次cost，可关联实际订单。原件或已确认票号重复时拒绝跨项目重复计费。
+- `POST /api/workspace/items/{id}/archive`：仅财务/集团管理员确认purchase/asset/payment/other分类，需version；不生成cost或payment，移出待确认队列。
+
+FIELD来源的整改记录只通过协同流程修改，普通issue编辑/删除不能绕过原件与复查。单据OCR建议不会自动写财务账、证明付款、鉴定发票真伪或确认全部成本完整。语音目前供回放，不自动转写为会计数据。
+
+GitHub Pages静态模式只返回全新隔离演示库中的样例，拒绝所有实际写入；原件和实际员工资料不放进公开demo目录。

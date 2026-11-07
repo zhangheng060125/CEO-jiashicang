@@ -6,7 +6,7 @@ let signedIn=false;
 try{signedIn=sessionStorage.getItem('senhuo-static-session')==='demo';}catch{}
 function session(value){signedIn=value;try{value?sessionStorage.setItem('senhuo-static-session','demo'):sessionStorage.removeItem('senhuo-static-session');}catch{}}
 async function asset(name){
- if(!cached.has(name))cached.set(name,fetch(new URL('demo/'+name+'?v=1.4.0',base),{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('演示快照尚未发布，请稍后刷新。');return r.json();}).catch(e=>{cached.delete(name);throw e;}));
+ if(!cached.has(name))cached.set(name,fetch(new URL('demo/'+name+'?v=1.5.0',base),{cache:'no-store'}).then(async r=>{if(!r.ok)throw Error('演示快照尚未发布，请稍后刷新。');return r.json();}).catch(e=>{cached.delete(name);throw e;}));
  return cached.get(name);
 }
 function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json'}});}
@@ -32,6 +32,15 @@ export async function request(url,options={}){
   const m=await asset('manifest.json');
   if(path==='/api/me')return json({username:'演示访客',role:'admin',properties:['*'],demo:true,read_only:true});
   if(path==='/api/schema')return json({schemas:await asset('schema.json'),writable:[],today:m.asof,read_only:true});
+  if(path==='/api/workspace/config')return json({recognition:{engine:'demo_snapshot',available:false,chinese_ready:false,external_ai:false},max_file_mb:64,max_files:5,manage:false,book:false,direct:false});
+  if(path==='/api/workspace/items'){
+   const value=await asset('workspace.json'),prop=u.searchParams.get('property_id');
+   return json({items:value.items.filter(x=>!prop||x.property_id===prop)});
+  }
+  if(/^\/api\/workspace\/items\/\d+$/.test(path)){
+   const value=await asset('workspace.json'),item=value.items.find(x=>x.id===Number(path.split('/').at(-1)));
+   return item?json(item):json({detail:'演示记录不存在'},404);
+  }
   if(path==='/api/dashboard'){
    const prop=u.searchParams.get('property_id')||'',end=u.searchParams.get('end')||m.end,start=u.searchParams.get('start')||m.start;
    const days=Math.round((Date.parse(end)-Date.parse(start))/86400000)+1;

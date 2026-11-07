@@ -1,10 +1,18 @@
 # 森活森动文旅集团 · CEO 经营驾驶舱
 
-**[打开在线只读体验](https://zhangheng060125.github.io/CEO-jiashicang/?v=1.4.0)** · 无需账号，支持模块浏览、酒店/期间筛选及订单下钻。全部为模拟数据；实际录入、保存和平台接入使用完整版后台。
+**[打开在线只读体验](https://zhangheng060125.github.io/CEO-jiashicang/?v=1.5.0)** · 无需账号，支持模块浏览、酒店/期间筛选及订单下钻。全部为模拟数据；实际录入、保存和平台接入使用完整版后台。
 
 ![在线体验界面](docs/pages-overview.png)
 
 面向合肥市庐江县汤池镇温泉度假园区的中文经营系统。已实现「录入/导入 → SQLite 持久化 → 指标统计 → CEO 首页 → 原始订单下钻 → 异常指派、整改和复查」闭环。包含集团、单项目、独立运营公司视角。
+
+## 管理协同与员工随手拍（v1.5）
+
+新增「管理协同 / 随手拍」：照片、视频、录音提报，CEO/高管指令、主管指派、整改照片及复查关闭；员工只看本人或被指派记录。员工入口为完整版部署的 `/capture`，大按钮、可不打字、支持朗读和主管代传。
+
+单据先保留原件，后台排队本地OCR读取。财务可一键确认实际费用入账，或把采购入库、资产、付款等仅分类归档；未确认不计费用、不自动生成付款或成本完整性。原件权限保护、重复入账拦截和含附件完整备份均已实现。详见 [完整说明](docs/workspace.md) 与 [员工三步操作卡](docs/staff-quickstart.md)。
+
+当前GitHub Pages展示的是模拟流程和模拟识别结果，不接收真实上传。实际采集需要部署带数据库、持久磁盘及HTTPS的完整版后台，PMS仍须按真实系统授权对接。
 
 ## 启动
 
@@ -14,7 +22,7 @@ bash scripts/setup.sh
 bash scripts/start.sh
 ```
 
-Python 3.12、Node.js（用于 JS 语法校验）。后端 FastAPI + SQLite；前端复用已有原生 HTML/CSS/JavaScript，无需前端打包。服务端口默认 **3001**，可通过 `PORT` 修改。安装脚本创建 `.runtime/venv`，复用符合固定版本的环境包，安装缺失依赖、初始化演示数据并运行测试。已有数据库不会被覆盖。
+Python 3.12、Node.js（用于 JS 语法校验）。后端 FastAPI + SQLite + 私有附件存储；前端复用已有原生 HTML/CSS/JavaScript，无需前端打包。服务端口默认 **3001**，可通过 `PORT` 修改。安装脚本创建 `.runtime/venv`，复用符合固定版本的环境包，安装缺失依赖、初始化演示数据并运行测试。已有数据库不会被覆盖。
 
 登录页可进入**独立演示空间**体验全部经营流程。真实空间首次启动创建 `admin` 账号，随机初始密码在服务器 `.runtime/admin-password.txt`，权限为 0600；不写入源代码或聊天。请由部署管理者安全交付给实际管理员，使用 `python scripts/reset_password.py` 修改后初始密码文件会删除。管理员可在左下角账号入口创建店长、财务和运营账号并指定项目范围。
 
@@ -28,7 +36,7 @@ Python 3.12、Node.js（用于 JS 语法校验）。后端 FastAPI + SQLite；�
 
 GitHub Pages已适配项目子目录与静态只读数据，不依赖Python服务器。详见 [GitHub Pages说明](docs/github-pages.md)；它不提供正式登录或业务写入。
 
-## 已交付模块（v1.4）
+## 已交付模块（v1.5）
 
 - **CEO 首页**：履约净收入、间夜、入住率、ADR、RevPAR、未来7/30天预订、获客后经营贡献、到账和待结算；同一查询返回指标及对应订单。
 - **酒店与房态**：规划与物理房量、逐店逐日房型可售、停用、锁房、开放日历、工作日/周末/节假日与参考房价；未来7/30/90天确认预约与券承诺分开。
@@ -77,6 +85,7 @@ python tests/browser_smoke.py
 python tests/browser_extensions.py
 python tests/browser_preview.py
 python tests/browser_pages.py
+python tests/browser_workspace.py
 python tests/restore_smoke.py
 python tests/browser_integrations.py
 python tests/tls_smoke.py

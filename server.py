@@ -41,6 +41,8 @@ ROLES={'admin':set(SCHEMAS),'manager':{'inventory','order','reservation','fulfil
 ROLES['manager'].update({'alert_rule','product','entitlement','sop_item','sop_check','review'})
 ROLES['finance'].update({'alert_rule','entitlement'})
 ROLES['operations'].update({'touchpoint','review','product'})
+ROLES['executive']=set(ROLES['manager'])
+ROLES['staff']=set()
 FINANCIAL={'payment','cost','contract','operator_entry','coverage'}
 
 def connect():
@@ -98,6 +100,7 @@ def scope(user,dataset,prop=None,kind=None,write=False):
  if user['demo'] and dataset!='demo':err('演示会话不能访问真实数据',403)
  if prop and '*' not in user['properties'] and prop not in user['properties']:err('无此酒店或项目权限',403)
  if write and kind not in ROLES[user['role']]:err('当前角色无此管理权限',403)
+ if user['role']=='staff' and kind is not None and kind!='property':err('员工账号仅可通过随手拍查看本人或被指派的记录',403)
  if user['role']=='operations' and kind in FINANCIAL:err('线上运营角色不能访问财务明细',403)
 def allowed_props(c,user,dataset,prop):
  scope(user,dataset,prop)
@@ -231,6 +234,7 @@ def save_record(c,u,kind,dataset,prop,ext,data,rid=None,version=None):
   if (old['kind'],old['dataset'],old['property_id'])!=(kind,dataset,prop):err('不可更换记录类型、数据集或项目')
   if version!=old['version']:err('记录已更新，请刷新后重试',409)
   previous=json.loads(old['payload'])
+  if kind=='issue' and previous.get('alert_key','').startswith('FIELD:') and not u.get('_workspace'):err('此任务关联现场证据，请通过管理协同空间处理')
   if kind=='issue' and previous.get('alert_key') and previous['alert_key']!=clean.get('alert_key'):err('已绑定的预警或检查来源不可修改')
   if kind=='issue' and previous.get('alert_key','').startswith('SOP:') and previous['severity']=='redline' and clean['severity']!='redline':err('SOP产生的红线不能降级，应完成整改复查后关闭')
   changed=c.execute('UPDATE records SET external_id=?,payload=?,version=version+1,updated_at=? WHERE id=? AND version=?',(ext,json.dumps(clean,ensure_ascii=False),NOW(),rid,version))
@@ -282,6 +286,10 @@ def preview_page():return FileResponse(ROOT/'index.html')
 def javascript():return FileResponse(ROOT/'app.js',media_type='text/javascript')
 @app.get('/preview.js')
 def preview_javascript():return FileResponse(ROOT/'preview.js',media_type='text/javascript')
+@app.get('/capture')
+def capture_page():return FileResponse(ROOT/'index.html')
+@app.get('/workspace.js')
+def workspace_javascript():return FileResponse(ROOT/'workspace.js',media_type='text/javascript')
 @app.get('/transport.js')
 def transport_javascript():return FileResponse(ROOT/'transport.js',media_type='text/javascript')
 @app.get('/style.css')
@@ -303,7 +311,7 @@ async def login(request:Request):
  body=await read_json(request);demo=body.get('demo') is True
  if demo and os.environ.get('HOTEL_ALLOW_DEMO','1')!='1':err('此部署已关闭公开演示登录',403)
  with db() as c:
-  uid=None
+  uid=None;session_seconds=28800
   if not demo:
    username=str(body.get('username',''));key=(request.client.host if request.client else '')+':'+username
    attempt=c.execute('SELECT * FROM login_attempts WHERE key=?',(key,)).fetchone()
@@ -312,11 +320,13 @@ async def login(request:Request):
    if not u or not hmac.compare_digest(password_hash(str(body.get('password','')),u['salt']),u['hash']):
     attempts=(attempt['attempts'] if attempt and attempt['until']>NOW() else 0)+1
     c.execute('INSERT OR REPLACE INTO login_attempts VALUES(?,?,?)',(key,attempts,(datetime.now(timezone.utc)+timedelta(minutes=15)).isoformat()));c.commit();err('账号或密码错误',401)
-   uid=u['id'];c.execute('DELETE FROM login_attempts WHERE key=?',(key,))
+   uid=u['id']
+   if u['role']=='staff' and body.get('remember_device') is True:session_seconds=30*86400
+   c.execute('DELETE FROM login_attempts WHERE key=?',(key,))
   token=secrets.token_urlsafe(32)
   c.execute('DELETE FROM sessions WHERE expires<?',(NOW(),))
-  c.execute('INSERT INTO sessions VALUES(?,?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),uid,int(demo),(datetime.now(timezone.utc)+timedelta(hours=8)).isoformat()))
- response=JSONResponse({'ok':True});response.set_cookie('hotel_session',token,httponly=True,samesite='strict',secure=os.environ.get('HOTEL_SECURE_COOKIE')=='1',max_age=28800);return response
+  c.execute('INSERT INTO sessions VALUES(?,?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),uid,int(demo),(datetime.now(timezone.utc)+timedelta(seconds=session_seconds)).isoformat()))
+ response=JSONResponse({'ok':True});response.set_cookie('hotel_session',token,httponly=True,samesite='strict',secure=os.environ.get('HOTEL_SECURE_COOKIE')=='1',max_age=session_seconds);return response
 @app.post('/api/logout')
 def logout(request:Request):
  with db() as c:c.execute('DELETE FROM sessions WHERE token=?',(hashlib.sha256(request.cookies.get('hotel_session','').encode()).hexdigest(),))
@@ -325,7 +335,7 @@ def logout(request:Request):
 def me(request:Request):return auth(request)
 @app.get('/api/schema')
 def schema(request:Request):
- u=auth(request);return {'schemas':{k:v for k,v in SCHEMAS.items() if not(u['role']=='operations' and k in FINANCIAL)},'writable':list(ROLES[u['role']]),'today':TODAY()}
+ u=auth(request);return {'schemas':{k:v for k,v in SCHEMAS.items() if (u['role']!='staff' or k=='property') and not(u['role']=='operations' and k in FINANCIAL)},'writable':list(ROLES[u['role']]),'today':TODAY()}
 @app.get('/api/records/{kind}')
 def listing(kind:str,request:Request,dataset:str='actual',property_id:str=''):
  u=auth(request);scope(u,dataset,property_id,kind)
@@ -371,6 +381,7 @@ def delete(kind:str,rid:int,request:Request,version:int):
   scope(u,row['dataset'],row['property_id'],kind,True)
   if row['version']!=version:err('记录版本已变化',409)
   original=json.loads(row['payload'])
+  if kind=='issue' and original.get('alert_key','').startswith('FIELD:'):err('现场协同任务需保留原始证据，不能直接删除',409)
   if kind=='issue' and original['severity']=='redline' and original['status']!='closed':err('未关闭红线不能删除，请完成整改与复查',409)
   changed=c.execute('DELETE FROM records WHERE id=? AND version=?',(rid,version))
   if changed.rowcount!=1:err('记录已被并发更新，请刷新',409)
@@ -453,6 +464,7 @@ async def import_commit(request:Request):
 @app.get('/api/logs')
 def logs(request:Request,dataset:str='actual',property_id:str=''):
  u=auth(request);scope(u,dataset,property_id)
+ if u['role']=='staff':err('员工账号不能读取经营审计台账',403)
  with db() as c:
   props=allowed_props(c,u,dataset,property_id)
   def read(table):
@@ -662,7 +674,9 @@ def metrics(rs,start,end,asof):
 
 @app.get('/api/dashboard')
 def dashboard(request:Request,dataset:str='actual',property_id:str='',start:str='',end:str='',asof:str=''):
- u=auth(request);end=end or TODAY();dateval(end);start=start or (date.fromisoformat(end)-timedelta(days=29)).isoformat();asof=asof or TODAY();dateval(asof)
+ u=auth(request)
+ if u['role']=='staff':err('员工账号不能读取经营报表',403)
+ end=end or TODAY();dateval(end);start=start or (date.fromisoformat(end)-timedelta(days=29)).isoformat();asof=asof or TODAY();dateval(asof)
  with db() as c:rs=records(c,dataset,props=allowed_props(c,u,dataset,property_id))
  result=metrics(rs,start,end,asof)
  if u['role']=='operations':
@@ -679,6 +693,7 @@ def dashboard(request:Request,dataset:str='actual',property_id:str='',start:str=
 @app.get('/api/order/{rid}')
 def drill(rid:int,request:Request):
  u=auth(request)
+ if u['role']=='staff':err('员工账号不能读取经营订单',403)
  with db() as c:
   r=c.execute('SELECT * FROM records WHERE id=? AND kind="order"',(rid,)).fetchone()
   if not r:err('订单不存在',404)
@@ -737,6 +752,8 @@ async def edit_user(uid:int,request:Request):
 init_db()
 import integrations, sys
 integrations.install(sys.modules[__name__])
+import workspace
+WORKSPACE=workspace.install(sys.modules[__name__])
 if __name__=='__main__':
  import uvicorn
  uvicorn.run(app,host=os.environ.get('HOST','0.0.0.0'),port=int(os.environ.get('PORT','3001')))

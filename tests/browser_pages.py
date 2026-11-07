@@ -11,7 +11,7 @@ from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='senhuo-pages-test-') as folder,sync_playwright() as p:
  folder=Path(folder);site=folder/'CEO-jiashicang';site.mkdir()
- for name in ('index.html','app.js','preview.js','transport.js','style.css'):shutil.copyfile(ROOT/name,site/name)
+ for name in ('index.html','app.js','preview.js','transport.js','workspace.js','style.css'):shutil.copyfile(ROOT/name,site/name)
  for name in ('demo','templates'):shutil.copytree(ROOT/name,site/name)
  class Quiet(SimpleHTTPRequestHandler):
   def log_message(self,*_):pass
@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory(prefix='senhuo-pages-test-') as folder,sync_pla
   page.reload();page.wait_for_selector('.metric')
   page.locator('#preview-guide').click();page.locator('[data-preview-step="1"]').click()
   page.locator('#preview-action').click();page.wait_for_selector('#modal[open]');assert '订单下钻' in page.locator('#modal').inner_text();page.locator('#modal .close').click()
-  for key in ['inventory','channels','finance','operator','business','customers','issues','targets','data']:
+  for key in ['workspace','inventory','channels','finance','operator','business','customers','issues','targets','data']:
    page.locator('[data-view="'+key+'"]').click();page.wait_for_function("!document.querySelector('#workspace').textContent.includes('正在读取')")
    assert '暂时无法加载' not in page.locator('#workspace').inner_text(),key
   page.locator('#static-kind').select_option('order');page.locator('#static-records').click();page.wait_for_selector('#export-records')
@@ -46,7 +46,9 @@ with tempfile.TemporaryDirectory(prefix='senhuo-pages-test-') as folder,sync_pla
   assert got.value.suggested_filename.endswith('.csv')
   page.locator('[data-view="issues"]').click();page.wait_for_selector('[data-alert]');page.locator('[data-alert]').first.click()
   page.wait_for_selector('#modal[open]');assert '只读' in page.locator('#modal').inner_text();assert page.locator('#record-form').count()==0;page.locator('#modal .close').click()
-  result=page.evaluate("""async()=>{const m=await import('./transport.js?v=1.4.0');return [
+  page.locator('[data-view=workspace]').click();page.wait_for_selector('[data-work-kind=document]');page.locator('[data-work-kind=document]').click();page.wait_for_selector('#work-recognition');assert '128.5' in page.locator('#work-recognition').inner_text();assert page.locator('#work-book').count()==0;page.locator('#modal .close').click()
+  page.locator('#capture-document').click();page.wait_for_selector('#modal[open]');assert page.locator('#work-camera-input').count()==0;assert '不接收真实' in page.locator('#modal-body').inner_text();page.locator('#modal .close').click()
+  result=page.evaluate("""async()=>{const m=await import('./transport.js?v=1.5.0');return [
    (await m.request('/api/dashboard?dataset=actual')).status,
    (await m.request('/api/records/customer',{method:'POST',body:'{}'})).status,
    (await m.request('/api/users')).status,

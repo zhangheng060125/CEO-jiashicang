@@ -4,10 +4,15 @@ project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 python3 -m venv --system-site-packages .runtime/venv
 .runtime/venv/bin/python -m pip install --disable-pip-version-check -r requirements.txt
+if command -v tesseract >/dev/null 2>&1; then
+  .runtime/venv/bin/python scripts/setup_ocr.py
+fi
 .runtime/venv/bin/python seed_demo.py
 .runtime/venv/bin/python seed_extensions.py
+.runtime/venv/bin/python seed_workspace_demo.py
 .runtime/venv/bin/python scripts/generate_templates.py
 .runtime/venv/bin/python -m unittest discover -s tests -v
 node --check app.js
 node --check preview.js
 node --check transport.js
+node --check workspace.js

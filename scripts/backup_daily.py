@@ -14,6 +14,12 @@ if not source.is_file():
 destination = Path(sys.argv[1])
 destination.mkdir(parents=True, exist_ok=True, mode=0o700)
 target = destination/('hotel-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+secrets.token_hex(4)+'.sqlite3')
+with sqlite3.connect(source.resolve().as_uri()+'?mode=ro',uri=True) as check:
+    has_media=check.execute("SELECT 1 FROM sqlite_master WHERE name='work_media'").fetchone() and check.execute('SELECT 1 FROM work_media LIMIT 1').fetchone()
+if has_media:
+    import subprocess
+    subprocess.run([sys.executable,str(Path(__file__).resolve().with_name('backup_full.py')),str(target.with_suffix('.zip'))],check=True)
+    raise SystemExit(0)
 fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
 os.close(fd)
 try:

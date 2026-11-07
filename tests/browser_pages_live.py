@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 import httpx
 from playwright.sync_api import sync_playwright
 
-url=os.environ.get('HOTEL_PAGES_URL','https://zhangheng060125.github.io/CEO-jiashicang/?v=1.4.0')
+url=os.environ.get('HOTEL_PAGES_URL','https://zhangheng060125.github.io/CEO-jiashicang/?v=1.5.0')
 origin=urlsplit(url).netloc
 out=Path(os.environ.get('HOTEL_PAGES_SCREENSHOT','/tmp/senhuo-pages-live.png'))
 with httpx.Client(timeout=30,follow_redirects=True) as client,sync_playwright() as p:
@@ -37,9 +37,12 @@ with httpx.Client(timeout=30,follow_redirects=True) as client,sync_playwright() 
   page.locator('#property-filter').select_option('bhl');page.wait_for_selector('.metric')
   page.locator('#preview-period').select_option('7');page.wait_for_selector('.metric')
   page.locator('#preview-reset').click();page.wait_for_selector('.metric');page.wait_for_function("!document.querySelector('#preview-action').disabled")
+  page.locator('[data-view=workspace]').click();page.wait_for_selector('[data-work-kind=document]');page.locator('[data-work-kind=document]').click();page.wait_for_selector('#work-recognition');assert '128.5' in page.locator('#work-recognition').inner_text();assert page.locator('#work-book').count()==0;page.locator('#modal .close').click()
+  page.locator('[data-work-kind=inspection]').click();page.wait_for_selector('#modal[open]');assert '管理指令' in page.locator('#modal-body').inner_text();page.locator('#modal .close').click()
+  page.goto(url+'&capture=1');page.wait_for_selector('#capture-inspection');assert '管理协同' in page.locator('#page-title').inner_text()
   out.parent.mkdir(parents=True,exist_ok=True);page.screenshot(path=str(out),full_page=False)
   assert not errors,errors
   assert not failures,failures
   assert not any('/api/' in u for u in urls)
-  print(json.dumps({'url':url,'public_site':'PASS','metrics':8,'order_drill':'PASS','filters':'PASS','resource_errors':0,'script_errors':0,'backend_requests':0,'tls_verification':True,'screenshot':str(out)},ensure_ascii=False))
+  print(json.dumps({'url':url,'public_site':'PASS','metrics':8,'order_drill':'PASS','collaboration_and_capture_entry':'PASS','filters':'PASS','resource_errors':0,'script_errors':0,'backend_requests':0,'tls_verification':True,'screenshot':str(out)},ensure_ascii=False))
  finally:browser.close()

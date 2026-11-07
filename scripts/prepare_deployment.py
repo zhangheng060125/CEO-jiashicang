@@ -36,7 +36,7 @@ ProtectHome=true
 ReadWritePaths={data} {backups}
 '''
     return {
-        'production.env': f'HOST=127.0.0.1\nPORT={port}\nHOTEL_DATA_DIR={data}\nHOTEL_SECURE_COOKIE=1\nHOTEL_ALLOW_DEMO=0\n',
+        'production.env': f'HOST=127.0.0.1\nPORT={port}\nHOTEL_DATA_DIR={data}\nHOTEL_SECURE_COOKIE=1\nHOTEL_ALLOW_DEMO=0\nHOTEL_MEDIA_QUOTA_MB=20480\n',
         'senhuo.service': f'''[Unit]
 Description=Senhuo CEO dashboard
 After=network.target
@@ -82,7 +82,7 @@ server {{
     ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
-    client_max_body_size 8m;
+    client_max_body_size 64m;
     add_header Strict-Transport-Security "max-age=31536000" always;
     location / {{
         proxy_pass http://127.0.0.1:{port};
@@ -91,7 +91,7 @@ server {{
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_connect_timeout 5s;
-        proxy_read_timeout 90s;
+        proxy_read_timeout 180s;
         proxy_redirect off;
     }}
 }}
@@ -100,8 +100,8 @@ server {{
 
 域名：{domain}；代码：{project}；数据：{data}；备份：{backups}；服务用户：{user}。
 
-1. 在目标 Linux 服务器安装 Python 3.12、venv、Nginx，创建专用用户/同名组 `{user}`。下载源码到上述代码目录；运行 `bash scripts/setup.sh` 安装并测试。另建生产虚拟环境：`python3 -m venv {project}/.venv`，再运行 `{project}/.venv/bin/python -m pip install -r {project}/requirements.txt`。生产服务使用 `.venv`，无需读取开发环境私有的 `.runtime`。生产环境由 `HOTEL_DATA_DIR` 指向独立目录，安装时的演示库不会自动成为真实经营库。
-2. 创建数据与备份目录，归服务用户所有、权限700；源码归部署用户所有且服务用户可读/执行。复制 production.env 到 `{data}/production.env`，权限600且服务用户可读。若需接续已有业务，先按 docs/deployment.md 恢复备份到全新数据目录再使用该路径，勿覆盖现有数据库。
+1. 在目标 Linux 服务器安装 Python 3.12、venv、Nginx、tesseract-ocr、ffmpeg、poppler-utils，创建专用用户/同名组 `{user}`。下载源码到上述代码目录；运行 `bash scripts/setup.sh` 安装并测试。另建生产虚拟环境：`python3 -m venv {project}/.venv`，再运行 `{project}/.venv/bin/python -m pip install -r {project}/requirements.txt`。生产服务使用 `.venv`，无需读取开发环境私有的 `.runtime`。生产环境由 `HOTEL_DATA_DIR` 指向独立目录，安装时的演示库不会自动成为真实经营库。
+2. 创建数据与备份目录，归服务用户所有、权限700；源码归部署用户所有且服务用户可读/执行。复制 production.env 到 `{data}/production.env`，权限600且服务用户可读。以服务用户身份运行 `HOTEL_DATA_DIR={data} {python} {project}/scripts/setup_ocr.py` 安装已固定并校验的中文/英文模型。员工真实拍照、录音需使用HTTPS和持久磁盘。若需接续已有业务，先按 docs/deployment.md 恢复备份到全新数据目录再使用该路径，勿覆盖现有数据库。
 3. 将域名解析到服务器，取得有效TLS证书；若证书路径不同，修改 Nginx 配置中的两个 ssl 路径。仅对外开放80/443；应用绑定127.0.0.1。
 4. 将三个 senhuo*.service/timer 文件放到 /etc/systemd/system/，执行 `systemd-analyze verify /etc/systemd/system/senhuo.service /etc/systemd/system/senhuo-backup.service /etc/systemd/system/senhuo-backup.timer`。将 Nginx 配置纳入现有 http 配置并执行 `nginx -t`。验证通过后再 daemon-reload、启动 senhuo.service 并重载 Nginx；按需要 enable 服务和备份 timer。
 5. 通过HTTPS检查 /api/health、登录、实际数据导入/下钻、会话Secure标记、公开演示登录已禁用。首次管理员凭据在数据目录内，仅在服务器读取，登录后修改密码。
