@@ -1,5 +1,7 @@
 # 部署与运行
 
+GitHub Pages现提供在线只读体验，地址与限制见 [GitHub Pages说明](github-pages.md)。以下是运行正式业务后台的部署要求；静态网站不会运行Python或SQLite。
+
 ## 已验证环境
 
 Python 3.12，Node 24（只用于前端校验），FastAPI 0.141.1、Uvicorn 0.52.1、openpyxl 3.1.5、httpx 0.28.1。`requirements.txt` 固定直接依赖。仓库已有独立云环境，不额外创建 Git worktree。

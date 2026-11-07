@@ -91,3 +91,13 @@
 - 原始业务与扩展浏览器验收回归，保留既有CSV导入去重、订单下钻和整改复查功能。
 - 新体验入口截图 docs/preview-landing.png；电脑/手机截图已更新。全部使用模拟数据。
 - `npm run check` 同时验证app.js、preview.js与Python源码；实际公网预览仍需完成目标服务器部署。
+
+
+## v1.4 GitHub Pages适配（2026-11-07，北京时间）
+
+- 已定位原站资源根路径404和GitHub Pages不支持Python后台两项原因。资源改为相对路径；静态站明确使用只读模拟快照，普通后台继续使用API。
+- `npm test`：42项通过，新增公开快照全部为demo、关联完整、报表日期/范围、订单和日合计与首页一致。
+- `python tests/browser_pages.py`：仅静态文件的项目子目录服务器，11模块、导览、订单下钻、项目/7天/30天筛选、下载、只读限制和手机布局通过；资源错误0、后台API网络请求0。
+- `python tests/browser_preview.py` 和 `python tests/browser_integrations.py` 回归通过；完整版演示保存、正式登录及关闭演示时的接入管理仍正常。
+- `npm run check` 同时校验app.js、preview.js、transport.js与Python。快照生成使用全新临时数据库，未导出运行库、账号或凭据。
+- 在线发布状态以本轮GitHub Pages构建及公网复验结果为准。

@@ -1,12 +1,13 @@
 {
   "name": "senhuo-ceo-cockpit",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "python server.py",
     "seed": "python seed_demo.py && python seed_extensions.py",
     "test": "python -m unittest discover -s tests -v",
-    "check": "node --check app.js && node --check preview.js && python -m py_compile server.py business.py integrations.py seed_demo.py seed_extensions.py scripts/*.py"
+    "check": "node --check app.js && node --check preview.js && node --check transport.js && python -m py_compile server.py business.py integrations.py seed_demo.py seed_extensions.py scripts/*.py",
+    "build:demo": "python scripts/build_static_demo.py"
   }
 }

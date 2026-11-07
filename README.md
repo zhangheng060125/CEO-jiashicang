@@ -1,5 +1,9 @@
 # 森活森动文旅集团 · CEO 经营驾驶舱
 
+**[打开在线只读体验](https://zhangheng060125.github.io/CEO-jiashicang/?v=1.4.0)** · 无需账号，支持模块浏览、酒店/期间筛选及订单下钻。全部为模拟数据；实际录入、保存和平台接入使用完整版后台。
+
+![在线体验界面](docs/pages-overview.png)
+
 面向合肥市庐江县汤池镇温泉度假园区的中文经营系统。已实现「录入/导入 → SQLite 持久化 → 指标统计 → CEO 首页 → 原始订单下钻 → 异常指派、整改和复查」闭环。包含集团、单项目、独立运营公司视角。
 
 ## 启动
@@ -22,7 +26,9 @@ Python 3.12、Node.js（用于 JS 语法校验）。后端 FastAPI + SQLite；�
 
 默认使用最近演示履约日作为统计与未来房态的演示基准，避免样例随时间推移变成空页面。「恢复默认视图」不删除任何演示记录。生产配置默认关闭公开体验；需要开放的部署设置 `HOTEL_ALLOW_DEMO=1` 并重启，关闭时入口和后端登录都会停用。详见 [体验功能说明](docs/preview.md)。
 
-## 已交付模块（v1.3）
+GitHub Pages已适配项目子目录与静态只读数据，不依赖Python服务器。详见 [GitHub Pages说明](docs/github-pages.md)；它不提供正式登录或业务写入。
+
+## 已交付模块（v1.4）
 
 - **CEO 首页**：履约净收入、间夜、入住率、ADR、RevPAR、未来7/30天预订、获客后经营贡献、到账和待结算；同一查询返回指标及对应订单。
 - **酒店与房态**：规划与物理房量、逐店逐日房型可售、停用、锁房、开放日历、工作日/周末/节假日与参考房价；未来7/30/90天确认预约与券承诺分开。
@@ -70,6 +76,7 @@ npm run check
 python tests/browser_smoke.py
 python tests/browser_extensions.py
 python tests/browser_preview.py
+python tests/browser_pages.py
 python tests/restore_smoke.py
 python tests/browser_integrations.py
 python tests/tls_smoke.py
